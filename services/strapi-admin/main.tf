@@ -9,14 +9,14 @@ provider "aws" {
 # }
 
 module "vpc" {
-  source = "git@github.com:sigma-us/terraform-modules.git//AWS/modules/vpc?ref=stable"
+  source = "git@github.com:sigma-us/terraform-modules.git//AWS/modules/vpc"
 }
 
-module "public_subnet" {
-  source = "../modules/public-subnet"
+# module "public_subnet" {
+#   source = "../modules/public-subnet"
 
-  vpc_id = module.vpc.vpc_id
-}
+#   vpc_id = module.vpc.vpc_id
+# }
 
 # module "internet_gateway" {
 #   source = "../modules/internet-gateway"
