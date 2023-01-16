@@ -12,11 +12,11 @@ module "vpc" {
   source = "git@github.com:sigma-us/terraform-modules.git//AWS/modules/vpc?ref=stable"
 }
 
-# module "public_subnet" {
-#   source = "../modules/public-subnet"
+module "public_subnet" {
+  source = "../modules/public-subnet"
 
-#   vpc_id = module.vpc.vpc_id
-# }
+  vpc_id = module.vpc.vpc_id
+}
 
 # module "internet_gateway" {
 #   source = "../modules/internet-gateway"
