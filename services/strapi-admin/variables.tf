@@ -10,7 +10,7 @@ variable "aws_profile" {
 
 variable "environment" {
   description = "AWS Env"
-  default = "staging"
+  default     = "staging"
 }
 
 variable "aws_dynamodb_table" {

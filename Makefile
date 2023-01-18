@@ -1,19 +1,5 @@
 ## 
 SHELL = /bin/zsh
-ALL_MODULES := $(shell for module in $(sort $(wildcard ./modules/three-tier-deployment/**/main.tf)); do echo $$module | cut -d/ -f3 | tr "\n" " "; done)
-
-PWD := $(shell pwd | rev |  cut -d/ -f1 | rev)
-
-reverse = $(2) $(1)
-
-rev_str = $(1) | rev 
-
-foo = $(call reverse,a,b)
-bar = $(call rev_str,baby)
-
-REVERSE := $(shell echo reverse pwd)
-
-# TF_PATH2 = "./terraform/dev/us-east-1/t2.micro/three-tier-deployment"
 TF_PATH = "./services/strapi-admin"
 
 SERVICES := $(shell git show --name-only --oneline ${CIRCLE_SHA1} | awk -F"/" '/^services\// {print $$2}' | grep -v README | sort -u)
@@ -21,6 +7,12 @@ ALL_SERVICES := $(shell for service in $(sort $(wildcard ./services/**/main.tf))
 ENV ?= test
 INIT_ARGS := -var environment=${ENV} -backend-config=services/$$service/environments/${ENV}/backend.tfvars
 
+
+clean: ## Remove Terraform build files
+	@echo "Cleaning terraform files"; \
+	find . -name .terraform | xargs rm -rf; \
+
+.PHONY: clean
 
 init: ## Terraform Init
 	@echo "Running terraform init"; \
@@ -30,30 +22,41 @@ init: ## Terraform Init
 
 plan: ## Terraform Plan
 	@echo "Running terraform plan"; \
-	terraform -chdir=${TF_PATH} plan
+	terraform -chdir=${TF_PATH} plan | tfmask
 
 .PHONY: plan
 
-# validate: ## Terraform Validate
-# 	@echo "Running terraform validate"; \
-# 	terraform -chdir=${TF_PATH} validate
+fmt: clean ## run terraform fmt to see diffs in formatting
+	@echo "Running Terraform format to check code for formatting issues"; \
+	for service in ${SERVICES}; do \
+		terraform -chdir=./services/$$service fmt -check=true -write=false -diff=true; \
+	done; \
+	echo "Done running Terraform format"
 
-# .PHONY: validate
-# terraform init -get=true -reconfigure ${INIT_ARGS} services/$$service/src; \
+.PHONY: fmt
+
+fmt-write: clean ## run terraform fmt write to correct any basic formatting issues
+	@echo "Running Terraform format write to correct any basic formatting issues"; \
+	for service in ${SERVICES}; do \
+		terraform -chdir=./services/$$service fmt -write=true; \
+	done; \
+	echo "Done running Terraform format with write"
+
+.PHONY: fmt-write
 
 validate: ## run terraform validate to validate the code
-	echo "Running Terraform validate to check code"; \
+	@echo "Running Terraform validate to check code"; \
 	for service in ${SERVICES}; do \
-	terraform -chdir=./services/$$service init; \
-	terraform -chdir=./services/$$service validate; \
+		terraform -chdir=./services/$$service init; \
+		terraform -chdir=./services/$$service validate; \
 	done; \
 	echo "Done running Terraform validate"
 
 .PHONY: validate
 
-apply: ## Terraform Apply
+apply: ## Terraform Apply piped through `tfmask`
 	@echo "Running terraform apply"; \
-	terraform -chdir=${TF_PATH} apply
+	terraform -chdir=${TF_PATH} apply | tfmask
 
 .PHONY: apply
 
@@ -63,40 +66,28 @@ destroy: ## Terraform Destroy
 
 .PHONY: destroy
 
-clean: ## Remove Terraform build files
-	@echo "Cleaning terraform files"; \
-	find ./ -name .terraform | xargs rm -rf
 
-.PHONY: clean
+### ---------------------------------- ### 
 
-test: ## testing makefile things
-	@echo ${ALL_MODULES}
-	@echo $(shell for folder in $(wildcard ./modules/**); do echo $$folder; list; done )
-	@echo $(wildcard ./modules/**/**)
-	@echo $(wildcard ../**)
-	@echo ${foo}
+services: ## display what services will be applied to
+	@echo ${SERVICES}
 
+.PHONY: services
 
+all-services: ## generates a list of all services
+	@echo ${ALL_SERVICES}
+
+.PHONY: all-services
+
+### ---------------------------------- ### 
+
+test: ## for testing new methods
+	@echo $(SERVICES)
 .PHONY: test
 
 
-here: ## more testing
-	@echo $(MAKEFILE_LIST)
-.PHONY: here
-
-rev:
-	@echo $(call rev_str,kyleconley)
-	@set -e; \
-	aws s3 ls;
-.PHONY: rev
-
-
-
-
-
-
 help: ## show this usage
-	@echo "\033[36mKyle Conley Terraform Services Makefile:\033[0m\nUsage: make [target]\n"; \
+	@echo "\033[36mKC Terraform Services Makefile:\033[0m\nUsage: make [target]\n"; \
 	grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: help
