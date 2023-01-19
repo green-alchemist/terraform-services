@@ -20,9 +20,9 @@ init: ## Terraform Init
 
 .PHONY: init
 
-plan: ## Terraform Plan
+plan: ## Terraform Plan add | tfmask before going to real production
 	@echo "Running terraform plan"; \
-	terraform -chdir=${TF_PATH} plan | tfmask
+	terraform -chdir=${TF_PATH} plan
 
 .PHONY: plan
 
@@ -56,7 +56,7 @@ validate: ## run terraform validate to validate the code
 
 apply: ## Terraform Apply piped through `tfmask`
 	@echo "Running terraform apply"; \
-	terraform -chdir=${TF_PATH} apply | tfmask
+	terraform -chdir=${TF_PATH} apply
 
 .PHONY: apply
 
@@ -80,6 +80,18 @@ all-services: ## generates a list of all services
 .PHONY: all-services
 
 ### ---------------------------------- ### 
+
+documentation: ## generate terraform documentation
+	@echo "# KC Terraform Services" > ./services/README.md; \
+  	for service in ${ALL_SERVICES}; do \
+    	echo "* [`basename $$service`](`basename $$service`/README.md)" >> ./services/README.md; \
+			echo "Generating docs for $$service"; \
+			terraform-docs  md table ./services/$$service > ./services/$$service/README.md; \
+  	done; \
+  	echo "\n## [Back](../README.md)\n" >> ./services/README.md \
+
+.PHONY: documentation
+
 
 test: ## for testing new methods
 	@echo $(SERVICES)

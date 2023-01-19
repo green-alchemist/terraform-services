@@ -13,6 +13,7 @@ variable "environment" {
   default     = "staging"
 }
 
-variable "aws_dynamodb_table" {
-  description = "State lock table name"
-}
+# variable "dynamodb_table_name" {
+#   description = "State lock table name"
+#   # prompts for value on plan
+# }
