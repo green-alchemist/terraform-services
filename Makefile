@@ -4,8 +4,13 @@ TF_PATH = "./services/strapi-admin"
 
 SERVICES := $(shell git show --name-only --oneline ${CIRCLE_SHA1} | awk -F"/" '/^services\// {print $$2}' | grep -v README | sort -u)
 ALL_SERVICES := $(shell for service in $(sort $(wildcard ./services/**/main.tf)); do echo $$service | cut -d/ -f3 | tr "\n" " "; done)
-ENV ?= test
-INIT_ARGS := -var environment=${ENV} -backend-config=services/$$service/environments/${ENV}/backend.tfvars
+
+## experimental start
+ENV ?= staging
+
+GIT_COMMITS = $(shell git log | grep commit | awk '{print $$2}')
+GIT_REFS = $(shell git reflog | awk '{print $$1}')
+## experimental end
 
 
 clean: ## Remove Terraform build files
@@ -14,15 +19,21 @@ clean: ## Remove Terraform build files
 
 .PHONY: clean
 
-init: ## Terraform Init
+init: clean ## Terraform Init
 	@echo "Running terraform init"; \
-	terraform -chdir=${TF_PATH} init
+	for service in ${SERVICES}; do \
+		terraform -chdir=./services/$$service init; \
+	done; \
+	echo "Done running Terraform init"
 
 .PHONY: init
 
 plan: ## Terraform Plan add | tfmask before going to real production
 	@echo "Running terraform plan"; \
-	terraform -chdir=${TF_PATH} plan
+	for service in ${SERVICES}; do \
+		terraform -chdir=./services/$$service plan; \
+	done; \
+	echo "Done running Terraform plan"
 
 .PHONY: plan
 
@@ -35,6 +46,15 @@ fmt: clean ## run terraform fmt to see diffs in formatting
 
 .PHONY: fmt
 
+fmt-all: clean ## run terraform fmt to see diffs in formatting
+	@echo "Running Terraform format to check code for formatting issues"; \
+	for service in ${ALL_SERVICES}; do \
+		terraform -chdir=./services/$$service fmt -check=true -write=false -diff=true; \
+	done; \
+	echo "Done running Terraform format"
+
+.PHONY: fmt-all
+
 fmt-write: clean ## run terraform fmt write to correct any basic formatting issues
 	@echo "Running Terraform format write to correct any basic formatting issues"; \
 	for service in ${SERVICES}; do \
@@ -44,7 +64,7 @@ fmt-write: clean ## run terraform fmt write to correct any basic formatting issu
 
 .PHONY: fmt-write
 
-validate: ## run terraform validate to validate the code
+validate: clean## run terraform validate to validate the code
 	@echo "Running Terraform validate to check code"; \
 	for service in ${SERVICES}; do \
 		terraform -chdir=./services/$$service init; \
@@ -54,9 +74,13 @@ validate: ## run terraform validate to validate the code
 
 .PHONY: validate
 
-apply: ## Terraform Apply piped through `tfmask`
+apply: clean ## Terraform Apply piped through `tfmask`
 	@echo "Running terraform apply"; \
-	terraform -chdir=${TF_PATH} apply
+	for service in ${SERVICES}; do \
+		terraform -chdir=./services/$$service init; \
+		terraform -chdir=./services/$$service apply; \
+	done; \
+	echo "Done running Terraform Apply"
 
 .PHONY: apply
 
@@ -73,6 +97,11 @@ services: ## display what services will be applied to
 	@echo ${SERVICES}
 
 .PHONY: services
+
+commits: ## display what services will be applied to
+	@echo ${GIT_COMMITS}
+
+.PHONY: commits
 
 all-services: ## generates a list of all services
 	@echo ${ALL_SERVICES}
