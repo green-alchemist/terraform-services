@@ -1,7 +1,7 @@
 provider "aws" {
   # shared_credentials_files = ["~/.aws/credentials"]
-  profile                  = var.aws_profile
-  region                   = var.aws_region
+  profile = var.aws_profile
+  region  = var.aws_region
 }
 
 terraform {
@@ -12,14 +12,14 @@ terraform {
     }
   }
 
-#  backend "s3" {
-#    bucket         = "<BUCKET_NAME>"
-#    key            = "state/terraform.tfstate"
-#    region         = "us-east-1"
-#    encrypt        = true
-#    kms_key_id     = "alias/terraform-bucket-key"
-#    dynamodb_table = "terraform-state"
-#  }
+  backend "s3" {
+    bucket         = "strapi-admin-tf-state"
+    key            = "state/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    kms_key_id     = "alias/strapi-admin-tf-state"
+    dynamodb_table = "strapi-admin-tf-lock"
+  }
 }
 
 

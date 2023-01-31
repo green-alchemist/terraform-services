@@ -13,7 +13,12 @@ variable "environment" {
   default     = "staging"
 }
 
-# variable "dynamodb_table_name" {
-#   description = "State lock table name"
-#   # prompts for value on plan
-# }
+variable "remote_state_bucket_name" {
+  description = "S3 remote state bucket name"
+  default     = "strapi-admin-tf-state"
+}
+
+variable "remote_state_dynamodb_table" {
+  description = "Remote State Lock DynamoDB Table name"
+  default     = "strapi-admin-tf-lock"
+}
