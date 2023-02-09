@@ -3,7 +3,6 @@ module "strapi_ecrs" {
   ecrs = {
     strapi-admin-dev = {
       tags = { Service = "strapi-admin-dev", Env = "dev" }
-      # lifecycle_policy = local.lifecycle_policy
     },
     strapi-admin-prod = {
       tags = { Service = "strapi-admin-prod", Env = "prod" }

@@ -3,6 +3,7 @@
 | Name | Version |
 |------|---------|
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 4.5 |
+| <a name="requirement_circleci"></a> [circleci](#requirement\_circleci) | 0.6.1 |
 
 ## Providers
 

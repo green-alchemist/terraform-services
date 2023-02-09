@@ -28,7 +28,7 @@ init: clean ## Terraform Init
 
 .PHONY: init
 
-plan: ## Terraform Plan add | tfmask before going to real production
+plan: init ## Terraform Plan add | tfmask before going to real production
 	@echo "Running terraform plan"; \
 	for service in ${SERVICES}; do \
 		terraform -chdir=./services/$$service plan; \
