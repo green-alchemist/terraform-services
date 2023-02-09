@@ -1,11 +1,11 @@
 module "remote_state" {
   source                  = "git@github.com:sigma-us/terraform-modules.git//modules/remote-state"
-  dynamodb_table_name     = var.remote_state_dynamodb_table
-  kms_key_alias           = "strapi-admin-tf-state"
+  dynamodb_table_name     = "kc-terraform-lock"
+  kms_key_alias           = "kc-tf-state"
   override_s3_bucket_name = true
-  s3_bucket_name          = var.remote_state_bucket_name
+  s3_bucket_name          = "kc-tf-state"
   tags = {
     Terraform = "true"
-    Service   = "strapi-admin"
+    Service   = "all"
   }
 }

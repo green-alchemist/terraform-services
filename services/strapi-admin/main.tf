@@ -1,7 +1,3 @@
-locals {
-  envs = { for tuple in regexall("(.*)=(.*)", file(".env")) : tuple[0] => sensitive(tuple[1]) }
-}
-
 
 terraform {
   required_providers {
@@ -16,12 +12,12 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "strapi-admin-tf-state"
-    key            = "state/terraform.tfstate"
+    bucket         = "kc-tf-state"
+    key            = "strapi-admin.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    kms_key_id     = "alias/strapi-admin-tf-state"
-    dynamodb_table = "strapi-admin-tf-lock"
+    kms_key_id     = "alias/kc-tf-state"
+    dynamodb_table = "kc-terraform-lock"
   }
 }
 
@@ -31,10 +27,6 @@ provider "aws" {
   region  = var.aws_region
 }
 
-provider "circleci" {
-  api_token    = locals.envs["CIRCLECI_CLI_TOKEN"]
-  organization = locals.envs["CIRCLECI_ORGANIZATION"]
-}
 
 # module "vpc" {
 #   source = "git@github.com:sigma-us/terraform-modules.git//AWS/modules/vpc"
