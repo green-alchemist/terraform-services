@@ -27,8 +27,6 @@ No resources.
 | <a name="input_aws_profile"></a> [aws\_profile](#input\_aws\_profile) | AWS Profile | `string` | `"default"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS Region | `string` | `"us-east-1"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | AWS Env | `string` | `"staging"` | no |
-| <a name="input_remote_state_bucket_name"></a> [remote\_state\_bucket\_name](#input\_remote\_state\_bucket\_name) | S3 remote state bucket name | `string` | `"strapi-admin-tf-state"` | no |
-| <a name="input_remote_state_dynamodb_table"></a> [remote\_state\_dynamodb\_table](#input\_remote\_state\_dynamodb\_table) | Remote State Lock DynamoDB Table name | `string` | `"strapi-admin-tf-lock"` | no |
 
 ## Outputs
 

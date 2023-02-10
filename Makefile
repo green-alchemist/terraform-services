@@ -19,9 +19,10 @@ clean: ## Remove Terraform build files
 
 .PHONY: clean
 
-init: clean ## Terraform Init
+init: ## Terraform Init
 	@echo "Running terraform init"; \
 	for service in ${SERVICES}; do \
+		echo $$service; \
 		terraform -chdir=./services/$$service init; \
 	done; \
 	echo "Done running Terraform init"
@@ -31,6 +32,7 @@ init: clean ## Terraform Init
 plan: init ## Terraform Plan add | tfmask before going to real production
 	@echo "Running terraform plan"; \
 	for service in ${SERVICES}; do \
+		echo $$service; \
 		terraform -chdir=./services/$$service plan; \
 	done; \
 	echo "Done running Terraform plan"
