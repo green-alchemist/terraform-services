@@ -19,7 +19,7 @@ terraform {
     key            = "strapi-admin.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    kms_key_id     = "alias/kc-tf-state"
+    # kms_key_id     = "alias/kc-tf-state"
     dynamodb_table = "kc-terraform-lock"
   }
 }
@@ -69,3 +69,4 @@ provider "circleci" {
 #   ec2_ssh_key_name        = var.ec2_ssh_key_name
 #   ec2_ssh_public_key_path = var.ec2_ssh_public_key_path
 # }
+
