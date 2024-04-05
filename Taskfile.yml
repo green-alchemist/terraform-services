@@ -1,0 +1,127 @@
+version: 3
+
+vars:
+  SERVICES: 
+    sh: git show --name-only --oneline ${CIRCLE_SHA1} | awk -F"/" '/^services\// {print $2}' | grep -v README | sort -u
+  ALL_SERVICES:
+    sh: for service in ./services/**/main.tf; do echo $service | cut -d/ -f3 | tr "\n" " "; done
+  
+
+tasks:
+  clean:
+    desc: Remove terraform build files
+    cmds:
+      - find . -name .terraform | xargs rm -rf;
+
+  init:
+    desc: terraform init on new service changes found in git
+    cmds:
+      - |
+        echo "Starting terraform init"; \
+        for service in {{.SERVICES}}; do \
+          echo $service; \
+          terraform -chdir=./services/$service init; \
+        done; \
+        echo "Done running terraform init"; 
+  
+  plan:
+    desc: terraform plan on new service changes found in git
+    deps: [init]
+    cmds:
+      - |
+        echo "Starting terraform plan"; \
+        for service in {{.SERVICES}}; do \
+          echo $service; \
+          terraform -chdir=./services/$service plan; \
+        done; \
+        echo "Done running terraform plan"; 
+
+  apply:
+    desc: terraform plan on new service changes found in git
+    deps: [clean, init]
+    cmds:
+      - |
+        echo "Starting terraform apply"; \
+        for service in {{.SERVICES}}; do \
+          echo $service; \
+          terraform -chdir=./services/$service apply; \
+        done; \
+        echo "Done running terraform plan";
+
+  fmt:
+    desc: terraform fmt check only
+    deps: [clean]
+    cmds:
+      - |
+        echo "Starting terraform fmt -check"; \
+        for service in {{.SERVICES}}; do \
+          terraform -chdir=./services/#service fmt -check=true -write=false -diff=true; \
+        done; \
+        echo "Done running terraform fmt"; 
+  
+  fmt-all:
+    desc: terraform fmt check only
+    deps: [clean]
+    cmds:
+      - |
+        echo "Starting terraform fmt -check"; \
+        for service in {{.ALL_SERVICES}}; do \
+          terraform -chdir=./services/#service fmt -check=true -write=false -diff=true; \
+        done; \
+        echo "Done running terraform fmt-all"; 
+  
+  fmt-write:
+    desc: terraform fmt write
+    deps: [clean]
+    cmds:
+      - |
+        echo "Starting terraform fmt-write"; \
+        for service in {{.SERVICES}}; do \
+          terraform -chdir=./services/#service fmt -write=true; \
+        done; \
+        echo "Done running terraform fmt-write"; 
+
+  validate:
+    desc: Validates terraform code
+    deps: [clean, init]
+    cmds:
+      - echo "Running terraform validate"
+      - |
+        for service in {{.SERVICES}}; do \
+          terraform -chdir=./services/$service validate; \
+        done; \
+      - echo "Done running terraform validate"
+
+  destroy:
+    deps: [prompt]
+    desc: terraform destroy
+    prompt: "Are you sure you want to run this? It will destroy everything in {{.SERVICES}}"
+    cmds:
+      - |
+        echo "Starting terraform destroy": \
+        for service in {{.SERVICES}}: do \
+          echo $service; \
+          terraform -chdir=./services/$service destroy; \
+        done; \
+        echo "Done running terraform destroy";
+
+  prompt:
+    desc: universal prompt
+    prompt: Are you sure?
+
+  documentation:
+    deps: [prompt]
+    desc: generate terraform documentation
+    cmds:
+      - |
+        echo "# KC Terraform Services" > ./services/README.md; \
+        for service in {{.SERVICES}}; do \
+          echo "* [`basename $service`](`basename $service`/README.md)" >> ./services/README.md; \
+          echo "Generating docs for $service"; \
+          terraform-docs  md table ./services/$service > ./services/$service/README.md; \
+        done; \
+        echo "## [Back](../README.md)" >> ./services/README.md \
+
+
+
+          
