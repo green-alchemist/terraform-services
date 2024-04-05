@@ -25,8 +25,8 @@ tasks:
         echo "Done running terraform init"; 
   
   plan:
-    desc: terraform plan on new service changes found in git
     deps: [init]
+    desc: terraform plan on new service changes found in git
     cmds:
       - |
         echo "Starting terraform plan"; \
@@ -37,8 +37,8 @@ tasks:
         echo "Done running terraform plan"; 
 
   apply:
-    desc: terraform plan on new service changes found in git
     deps: [clean, init]
+    desc: terraform plan on new service changes found in git
     cmds:
       - |
         echo "Starting terraform apply"; \
@@ -49,8 +49,8 @@ tasks:
         echo "Done running terraform plan";
 
   fmt:
-    desc: terraform fmt check only
     deps: [clean]
+    desc: terraform fmt check only
     cmds:
       - |
         echo "Starting terraform fmt -check"; \
@@ -60,8 +60,8 @@ tasks:
         echo "Done running terraform fmt"; 
   
   fmt-all:
-    desc: terraform fmt check only
     deps: [clean]
+    desc: terraform fmt check only
     cmds:
       - |
         echo "Starting terraform fmt -check"; \
@@ -71,8 +71,8 @@ tasks:
         echo "Done running terraform fmt-all"; 
   
   fmt-write:
-    desc: terraform fmt write
     deps: [clean]
+    desc: terraform fmt write
     cmds:
       - |
         echo "Starting terraform fmt-write"; \
@@ -82,8 +82,8 @@ tasks:
         echo "Done running terraform fmt-write"; 
 
   validate:
-    desc: Validates terraform code
     deps: [clean, init]
+    desc: Validates terraform code
     cmds:
       - echo "Running terraform validate"
       - |
