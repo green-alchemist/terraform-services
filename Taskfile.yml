@@ -6,7 +6,7 @@ vars:
   # ALL_SERVICES:
   #   sh: for service in ./services/**/main.tf; do echo $service | cut -d/ -f3 | tr "\n" " "; done
   SERVICES:
-    sh: git diff --name-only main... | grep 'services/' | cut -d/ -f2 | sort -u | tr '\n' ' '
+    sh: git diff --name-only master... | grep 'services/' | cut -d/ -f2 | sort -u | tr '\n' ' '
   ALL_SERVICES:
     sh: find services -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | tr '\n' ' '
   
