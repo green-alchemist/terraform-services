@@ -1,13 +1,22 @@
 version: 3
 
 vars:
-  SERVICES: 
-    sh: git show --name-only --oneline ${CIRCLE_SHA1} | awk -F"/" '/^services\// {print $2}' | grep -v README | sort -u
+  # SERVICES: 
+  #   sh: git show --name-only --oneline ${CIRCLE_SHA1} | awk -F"/" '/^services\// {print $2}' | grep -v README | sort -u
+  # ALL_SERVICES:
+  #   sh: for service in ./services/**/main.tf; do echo $service | cut -d/ -f3 | tr "\n" " "; done
+  SERVICES:
+    sh: git diff --name-only main... | grep 'services/' | cut -d/ -f2 | sort -u | tr '\n' ' '
   ALL_SERVICES:
-    sh: for service in ./services/**/main.tf; do echo $service | cut -d/ -f3 | tr "\n" " "; done
+    sh: find services -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | tr '\n' ' '
   
 
 tasks:
+
+  test:
+    desc: print vars
+    cmds:
+      - echo "SERVICES:{{.SERVICES}}, ALL_SERVICES:{{.ALL_SERVICES}}"
   clean:
     desc: Remove terraform build files
     cmds:
@@ -55,7 +64,7 @@ tasks:
       - |
         echo "Starting terraform fmt -check"; \
         for service in {{.SERVICES}}; do \
-          terraform -chdir=./services/#service fmt -check=true -write=false -diff=true; \
+          terraform -chdir=./services/$service fmt -check=true -write=false -diff=true; \
         done; \
         echo "Done running terraform fmt"; 
   
@@ -66,7 +75,7 @@ tasks:
       - |
         echo "Starting terraform fmt -check"; \
         for service in {{.ALL_SERVICES}}; do \
-          terraform -chdir=./services/#service fmt -check=true -write=false -diff=true; \
+          terraform -chdir=./services/$service fmt -check=true -write=false -diff=true; \
         done; \
         echo "Done running terraform fmt-all"; 
   
@@ -77,9 +86,20 @@ tasks:
       - |
         echo "Starting terraform fmt-write"; \
         for service in {{.SERVICES}}; do \
-          terraform -chdir=./services/#service fmt -write=true; \
+          terraform -chdir=./services/$service fmt -write=true; \
         done; \
         echo "Done running terraform fmt-write"; 
+
+  fmt-write-all:
+    deps: [clean]
+    desc: terraform fmt write all
+    cmds:
+      - |
+        echo "Starting terraform fmt-write-all"; \
+        for service in {{.ALL_SERVICES}}; do \
+          terraform -chdir=./services/$service fmt -write=true; \
+        done; \
+        echo "Done running terraform fmt-write-all"; 
 
   validate:
     deps: [clean, init]

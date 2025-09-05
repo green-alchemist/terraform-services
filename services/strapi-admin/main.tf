@@ -15,10 +15,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "kc-tf-state"
-    key            = "strapi-admin.tfstate"
-    region         = "us-east-1"
-    encrypt        = true
+    bucket  = "kc-tf-state"
+    key     = "strapi-admin.tfstate"
+    region  = "us-east-1"
+    encrypt = true
     # kms_key_id     = "alias/kc-tf-state"
     dynamodb_table = "kc-terraform-lock"
   }

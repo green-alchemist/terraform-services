@@ -1,2 +1,2 @@
-bucket = "strapi-admin-tf-state"
+bucket         = "strapi-admin-tf-state"
 dynamodb_table = "strapi-admin-tf-lock"
