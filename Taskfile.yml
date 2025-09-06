@@ -227,6 +227,21 @@ tasks:
           service: '{{.ITEM.service}}'
           env: '{{.ITEM.env}}'
 
+  plan-all:
+    desc: "Creates a Terraform plan for ALL services and environments."
+    cmds:
+      - for: { var: PARSED_PAIRS }
+        task: plan-service
+        vars: { service: '{{.ITEM.service}}', env: '{{.ITEM.env}}' }
+
+  apply-all:
+    desc: "Applies ALL planned changes for ALL services and environments."
+    prompt: "Are you sure you want to apply ALL plans for ALL services and environments? [y/N]"
+    cmds:
+      - for: { var: PARSED_PAIRS }
+        task: apply-service
+        vars: { service: '{{.ITEM.service}}', env: '{{.ITEM.env}}' }
+
   validate-all:
     desc: "Validates all Terraform files in all services and environments"
     cmds:

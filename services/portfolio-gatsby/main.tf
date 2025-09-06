@@ -3,10 +3,16 @@ provider "aws" {
   profile = var.aws_profile
 }
 
+# --- NEW: Look up the existing Route 53 hosted zone for your domain ---
+# This assumes the zone has already been created (e.g., by using the new route53-zone module).
+data "aws_route53_zone" "this" {
+  name = var.domain_name
+}
+
 # ------------------------------------------------------------------------------
 # S3 Bucket for Static Site Hosting
 # ------------------------------------------------------------------------------
-module "s3_static_site" {
+module "s3_site" {
   source      = "git@github.com:green-alchemist/terraform-modules.git//modules/s3-static-site"
   bucket_name = var.domain_name
   tags        = var.tags
@@ -17,15 +23,12 @@ module "s3_static_site" {
 # ------------------------------------------------------------------------------
 module "cloudfront_static_site" {
   source                = "git@github.com:green-alchemist/terraform-modules.git//modules/cloudfront"
-  domain_name           = var.domain_name
-  s3_origin_id          = module.s3_static_site.bucket_id
-  s3_origin_domain_name = module.s3_static_site.website_endpoint
-
-  route53_zone_id       = ""
-
-  # s3_bucket_arn       = module.s3_static_site.s3_bucket_arn
-  acm_certificate_arn = var.acm_certificate_arn
-  tags                = var.tags
+  s3_origin_domain_name      = module.s3_site.website_endpoint
+  s3_origin_id               = module.s3_site.bucket_id
+  domain_name                = var.domain_name
+  acm_certificate_arn        = var.acm_certificate_arn
+  tags                       = var.tags
+  route53_zone_id            = data.aws_route53_zone.this.zone_id
 }
 
 # ------------------------------------------------------------------------------

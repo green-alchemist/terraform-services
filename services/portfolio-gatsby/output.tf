@@ -1,6 +1,6 @@
 output "s3_bucket_name" {
   description = "The name of the S3 bucket where site files should be uploaded."
-  value       = module.s3_static_site.website_endpoint
+  value       = module.s3_site.website_endpoint
 }
 
 output "cloudfront_distribution_id" {
