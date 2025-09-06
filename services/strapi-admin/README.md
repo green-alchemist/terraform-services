@@ -13,8 +13,7 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_remote_state"></a> [remote\_state](#module\_remote\_state) | git@github.com:sigma-us/terraform-modules.git//modules/remote-state | n/a |
-| <a name="module_strapi_ecrs"></a> [strapi\_ecrs](#module\_strapi\_ecrs) | git@github.com:sigma-us/terraform-modules.git//modules/ecr | n/a |
+| <a name="module_strapi_ecrs"></a> [strapi\_ecrs](#module\_strapi\_ecrs) | git@github.com:green-alchemist/terraform-modules.git//modules/ecr | n/a |
 
 ## Resources
 

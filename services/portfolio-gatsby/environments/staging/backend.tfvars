@@ -1,6 +1,7 @@
-# backend.tfvars - Staging backend configuration for the Gatsby service
+# backend.tfvars for the staging environment of the strapi-admin service
 
-bucket         = "your-terraform-state-bucket-name" # The S3 bucket where you store your Terraform state
+bucket         = "kc-portfolio-tf-state"
 key            = "portfolio-gatsby/staging/terraform.tfstate"
 region         = "us-east-1"
-dynamodb_table = "your-terraform-lock-table-name"
+dynamodb_table = "kc-portfolio-tf-lock"
+profile        = "default"

@@ -10,8 +10,8 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_cloudfront_static_site"></a> [cloudfront\_static\_site](#module\_cloudfront\_static\_site) | git@github.com:sigma-us/terraform-modules.git//modules/cloudfront | n/a |
-| <a name="module_s3_static_site"></a> [s3\_static\_site](#module\_s3\_static\_site) | git@github.com:sigma-us/terraform-modules.git//modules/s3-static-site | n/a |
+| <a name="module_cloudfront_static_site"></a> [cloudfront\_static\_site](#module\_cloudfront\_static\_site) | git@github.com:green-alchemist/terraform-modules.git//modules/cloudfront | n/a |
+| <a name="module_s3_static_site"></a> [s3\_static\_site](#module\_s3\_static\_site) | git@github.com:green-alchemist/terraform-modules.git//modules/s3-static-site | n/a |
 
 ## Resources
 

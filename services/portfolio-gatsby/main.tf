@@ -1,19 +1,57 @@
 provider "aws" {
-  region = var.aws_region
+  region  = var.aws_region
+  profile = var.aws_profile
 }
 
-module "s3_site" {
-  source      = "../../terraform-modules/modules/s3-static-site"
+# ------------------------------------------------------------------------------
+# S3 Bucket for Static Site Hosting
+# ------------------------------------------------------------------------------
+module "s3_static_site" {
+  source      = "git@github.com:green-alchemist/terraform-modules.git//modules/s3-static-site"
   bucket_name = var.domain_name
   tags        = var.tags
 }
 
-module "cloudfront" {
-  source                     = "../../terraform-modules/modules/cloudfront-static-site"
-  s3_bucket_website_endpoint = module.s3_site.bucket_website_endpoint
-  bucket_name                = module.s3_site.bucket_name
-  domain_aliases             = [var.domain_name]
-  acm_certificate_arn        = var.acm_certificate_arn
-  tags                       = var.tags
+# ------------------------------------------------------------------------------
+# CloudFront Distribution for CDN
+# ------------------------------------------------------------------------------
+module "cloudfront_static_site" {
+  source              = "git@github.com:green-alchemist/terraform-modules.git//modules/cloudfront"
+  domain_name         = var.domain_name
+  s3_bucket_id        = module.s3_static_site.s3_bucket_id
+  s3_bucket_arn       = module.s3_static_site.s3_bucket_arn
+  acm_certificate_arn = var.acm_certificate_arn
+  tags                = var.tags
 }
+
+# ------------------------------------------------------------------------------
+# Route 53 DNS Records
+# ------------------------------------------------------------------------------
+# data "aws_route53_zone" "primary" {
+#   name = var.domain_name
+# }
+
+# resource "aws_route53_record" "www" {
+#   zone_id = data.aws_route53_zone.primary.zone_id
+#   name    = "www.${var.domain_name}"
+#   type    = "A"
+
+#   alias {
+#     name                   = module.cloudfront_static_site.cloudfront_distribution_domain_name
+#     zone_id                = module.cloudfront_static_site.cloudfront_distribution_hosted_zone_id
+#     evaluate_target_health = false
+#   }
+# }
+
+# resource "aws_route5s3_record" "apex" {
+#   zone_id = data.aws_route53_zone.primary.zone_id
+#   name    = var.domain_name
+#   type    = "A"
+
+#   alias {
+#     name                   = module.cloudfront_static_site.cloudfront_distribution_domain_name
+#     zone_id                = module.cloudfront_static_site.cloudfront_distribution_hosted_zone_id
+#     evaluate_target_health = false
+#   }
+# }
 

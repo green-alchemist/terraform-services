@@ -1,5 +1,5 @@
 module "strapi_ecrs" {
-  source = "git@github.com:sigma-us/terraform-modules.git//modules/ecr"
+  source = "git@github.com:green-alchemist/terraform-modules.git//modules/ecr"
   ecrs = {
     strapi-admin-dev = {
       tags = { Service = "strapi-admin-dev", Env = "dev" }
