@@ -1,5 +1,5 @@
 ## 
-SHELL = /bin/zsh
+# SHELL = $(echo $SHELL)
 TF_PATH = "./services/strapi-admin"
 
 SERVICES := $(shell git show --name-only --oneline ${CIRCLE_SHA1} | awk -F"/" '/^services\// {print $$2}' | grep -v README | sort -u)

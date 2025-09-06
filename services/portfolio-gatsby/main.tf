@@ -16,10 +16,14 @@ module "s3_static_site" {
 # CloudFront Distribution for CDN
 # ------------------------------------------------------------------------------
 module "cloudfront_static_site" {
-  source              = "git@github.com:green-alchemist/terraform-modules.git//modules/cloudfront"
-  domain_name         = var.domain_name
-  s3_bucket_id        = module.s3_static_site.s3_bucket_id
-  s3_bucket_arn       = module.s3_static_site.s3_bucket_arn
+  source                = "git@github.com:green-alchemist/terraform-modules.git//modules/cloudfront"
+  domain_name           = var.domain_name
+  s3_origin_id          = module.s3_static_site.bucket_id
+  s3_origin_domain_name = module.s3_static_site.website_endpoint
+
+  route53_zone_id       = ""
+
+  # s3_bucket_arn       = module.s3_static_site.s3_bucket_arn
   acm_certificate_arn = var.acm_certificate_arn
   tags                = var.tags
 }

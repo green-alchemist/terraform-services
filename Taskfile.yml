@@ -1,147 +1,334 @@
 version: 3
 
 vars:
-  # SERVICES: 
-  #   sh: git show --name-only --oneline ${CIRCLE_SHA1} | awk -F"/" '/^services\// {print $2}' | grep -v README | sort -u
-  # ALL_SERVICES:
-  #   sh: for service in ./services/**/main.tf; do echo $service | cut -d/ -f3 | tr "\n" " "; done
-  SERVICES:
-    sh: git diff --name-only master... | grep 'services/' | cut -d/ -f2 | sort -u | tr '\n' ' '
+
+  SERVICE_ENV_PAIRS:
+    sh: |
+      set -e
+      echo "["
+      for env_path in ./environments/*/; do
+        if [ -d "$env_path" ]; then
+          env=$(basename "$env_path")
+          for service_path in "$env_path"*/; do
+            if [ -d "$service_path" ] && [ -d "./services/$(basename "$service_path")" ]; then
+              service=$(basename "$service_path")
+              echo "{\"service\":\"$service\",\"env\":\"$env\"},"
+            fi
+          done
+        fi
+      done | sed '$s/,$//'
+      echo "]"
+
+  # Parses the JSON string into a structured list that Task can iterate over.
+  PARSED_PAIRS:
+    ref: fromJson .SERVICE_ENV_PAIRS
+
+  # Determines which services have changed compared to the main branch.
+  # This is ideal for CI/CD pipelines.
+  CHANGED_SERVICES:
+    sh: git diff --name-only master... | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
+
+  # Lists all available services based on the services/ directory.
   ALL_SERVICES:
     sh: find services -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | tr '\n' ' '
-  
+
 
 tasks:
 
-  test:
-    desc: print vars
+
+#   init:
+#     deps: [clean]
+#     desc: terraform init on new service changes found in git
+#     cmds:
+#       - |
+#         echo "Initializing all services..."
+#         for service in {{.ALL_SERVICES}}; do
+#           echo "--- Initializing Service: $service ---"
+#           for env_path in ./services/$service/environments/*/; do
+#             if [ -d "$env_path" ]; then
+#               env=$(basename "$env_path")
+#               echo "  -> Environment: $env"
+#               terraform -chdir=./services/$service init -backend-config=./environments/$env/backend.tfvars
+#             fi
+#           done
+#         done
+#         echo "Done."
+
+  
+#   plan:
+#     deps: [init]
+#     desc: terraform plan on new service changes found in git
+#     cmds:
+#       - |
+#         echo "Starting terraform plan"; \
+#         for service in {{.SERVICES}}; do \
+#           echo $service; \
+#           terraform -chdir=./services/$service plan; \
+#         done; \
+#         echo "Done running terraform plan"; 
+
+#   apply:
+#     deps: [clean, init]
+#     desc: terraform plan on new service changes found in git
+#     cmds:
+#       - |
+#         echo "Starting terraform apply"; \
+#         for service in {{.SERVICES}}; do \
+#           echo $service; \
+#           terraform -chdir=./services/$service apply; \
+#         done; \
+#         echo "Done running terraform plan";
+
+#   fmt:
+#     deps: [clean]
+#     desc: terraform fmt check only
+#     cmds:
+#       - |
+#         echo "Starting terraform fmt -check"; \
+#         for service in {{.SERVICES}}; do \
+#           terraform -chdir=./services/$service fmt -check=true -write=false -diff=true; \
+#         done; \
+#         echo "Done running terraform fmt"; 
+  
+#   fmt-all:
+#     deps: [clean]
+#     desc: terraform fmt check only
+#     cmds:
+#       - |
+#         echo "Starting terraform fmt -check"; \
+#         for service in {{.ALL_SERVICES}}; do \
+#           terraform -chdir=./services/$service fmt -check=true -write=false -diff=true; \
+#         done; \
+#         echo "Done running terraform fmt-all"; 
+  
+#   fmt-write:
+#     deps: [clean]
+#     desc: terraform fmt write
+#     cmds:
+#       - |
+#         echo "Starting terraform fmt-write"; \
+#         for service in {{.SERVICES}}; do \
+#           terraform -chdir=./services/$service fmt -write=true; \
+#         done; \
+#         echo "Done running terraform fmt-write"; 
+
+#   fmt-write-all:
+#     deps: [clean]
+#     desc: terraform fmt write all
+#     cmds:
+#       - |
+#         echo "Starting terraform fmt-write-all"; \
+#         for service in {{.ALL_SERVICES}}; do \
+#           terraform -chdir=./services/$service fmt -write=true; \
+#         done; \
+#         echo "Done running terraform fmt-write-all"; 
+
+
+  documentation:
+    desc: "Generates READMEs for all modules and a master index."
+    prompt: "This will overwrite existing README files. Are you sure? [y/N]"
+    # Run the steps in a clear, sequential order
     cmds:
-      - echo "SERVICES:{{.SERVICES}}, ALL_SERVICES:{{.ALL_SERVICES}}"
+      - task: doc-header
+      - for: { var: ALL_SERVICES }
+        task: doc-module
+        vars:
+          MODULE: '{{.ITEM}}'
+      - task: doc-footer
+
+  # --- Helper Tasks (internal) ---
+
+  doc-header:
+    internal: true
+    cmds:
+      # Creates or overwrites the main README with a clean header
+      - echo "# KC Terraform Services" > ./services/README.md
+      - echo "" >> ./services/README.md
+
+  doc-module:
+    internal: true
+    cmds:
+      # 1. Appends the link for the current module to the main README
+      - echo "* [{{.MODULE}}](./{{.MODULE}}/README.md)" >> ./services/README.md
+      # 2. Runs terraform-docs to generate the specific module's documentation
+      - echo "Generating docs for {{.MODULE}}..."
+      - terraform-docs md table ./services/{{.MODULE}} > ./services/{{.MODULE}}/README.md
+    requires:
+      vars: [MODULE]
+
+  doc-footer:
+    internal: true
+    cmds:
+      # Appends a consistent footer to the main README
+      - echo "## [Back](../README.md)" >> ./services/README.md
+  
+# End documentation functions
+
+
+  default:
+    cmds:
+      - task --list-all
+
+  print:
+    desc: Print ALL SERVICES AND SERVICES
+    cmds:
+      - |
+        echo "All Services: {{.ALL_SERVICES}}"
+        echo "Chnaged Services: {{.CHANGED_SERVICES}}"
+        echo "Service env pairs: {{.SERVICE_ENV_PAIRS}}"
+        echo "Parsed Pairs: {{.PARSED_PAIRS}}"
+        
+
+# --- CI/CD TASKS (for changed services) ---
+
+  plan-changed:
+    desc: "Creates a Terraform plan for services that have changed since 'main'."
+    preconditions:
+      - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
+        msg: "✅ No changed services detected. Nothing to plan."
+    cmds:
+      - for: { var: CHANGED_SERVICES }
+        task: plan-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+
+  apply-changed:
+    desc: "Applies the Terraform plan for changed services."
+    preconditions:
+      - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
+        msg: "✅ No changed services detected. Nothing to apply."
+    cmds:
+      - for: { var: CHANGED_SERVICES }
+        task: apply-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+
+  validate-changed:
+    desc: "Validates changed services (default env: staging)."
+    cmds:
+      - for: { var: CHANGED_SERVICES }
+        task: validate-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+
+
+  # --- MANUAL TASKS (for all services) ---
+
+  init-all:
+    deps: [clean]
+    desc: "Initializes all environments for all services."
+    cmds:
+      - for: { var: PARSED_PAIRS }
+        task: init-service
+        vars:
+          service: '{{.ITEM.service}}'
+          env: '{{.ITEM.env}}'
+
+  validate-all:
+    desc: "Validates all Terraform files in all services and environments"
+    cmds:
+      - for: { var: PARSED_PAIRS }
+        task: validate-service
+        vars:
+          service: '{{.ITEM.service}}'
+          env: '{{.ITEM.env}}'
+
+# Utility ---------
+
   clean:
     desc: Remove terraform build files
     cmds:
       - find . -name .terraform | xargs rm -rf;
 
-  init:
-    desc: terraform init on new service changes found in git
-    cmds:
-      - |
-        echo "Starting terraform init"; \
-        for service in {{.SERVICES}}; do \
-          echo $service; \
-          terraform -chdir=./services/$service init; \
-        done; \
-        echo "Done running terraform init"; 
-  
-  plan:
-    deps: [init]
-    desc: terraform plan on new service changes found in git
-    cmds:
-      - |
-        echo "Starting terraform plan"; \
-        for service in {{.SERVICES}}; do \
-          echo $service; \
-          terraform -chdir=./services/$service plan; \
-        done; \
-        echo "Done running terraform plan"; 
-
-  apply:
-    deps: [clean, init]
-    desc: terraform plan on new service changes found in git
-    cmds:
-      - |
-        echo "Starting terraform apply"; \
-        for service in {{.SERVICES}}; do \
-          echo $service; \
-          terraform -chdir=./services/$service apply; \
-        done; \
-        echo "Done running terraform plan";
-
   fmt:
-    deps: [clean]
-    desc: terraform fmt check only
+    desc: "Formats all Terraform files recursively"
     cmds:
-      - |
-        echo "Starting terraform fmt -check"; \
-        for service in {{.SERVICES}}; do \
-          terraform -chdir=./services/$service fmt -check=true -write=false -diff=true; \
-        done; \
-        echo "Done running terraform fmt"; 
-  
-  fmt-all:
-    deps: [clean]
-    desc: terraform fmt check only
-    cmds:
-      - |
-        echo "Starting terraform fmt -check"; \
-        for service in {{.ALL_SERVICES}}; do \
-          terraform -chdir=./services/$service fmt -check=true -write=false -diff=true; \
-        done; \
-        echo "Done running terraform fmt-all"; 
-  
-  fmt-write:
-    deps: [clean]
-    desc: terraform fmt write
-    cmds:
-      - |
-        echo "Starting terraform fmt-write"; \
-        for service in {{.SERVICES}}; do \
-          terraform -chdir=./services/$service fmt -write=true; \
-        done; \
-        echo "Done running terraform fmt-write"; 
-
-  fmt-write-all:
-    deps: [clean]
-    desc: terraform fmt write all
-    cmds:
-      - |
-        echo "Starting terraform fmt-write-all"; \
-        for service in {{.ALL_SERVICES}}; do \
-          terraform -chdir=./services/$service fmt -write=true; \
-        done; \
-        echo "Done running terraform fmt-write-all"; 
-
-  validate:
-    deps: [clean, init]
-    desc: Validates terraform code
-    cmds:
-      - echo "Running terraform validate"
-      - |
-        for service in {{.SERVICES}}; do \
-          terraform -chdir=./services/$service validate; \
-        done; \
-      - echo "Done running terraform validate"
+      - terraform fmt -recursive
 
   destroy:
-    deps: [prompt]
-    desc: terraform destroy
-    prompt: "Are you sure you want to run this? It will destroy everything in {{.SERVICES}}"
+    desc: "DANGER: Destroys a SINGLE service in a specified environment."
+    prompt: "🔴 Are you sure you want to destroy '{{.service}}' in '{{.env}}'? [y/N]"
     cmds:
-      - |
-        echo "Starting terraform destroy": \
-        for service in {{.SERVICES}}: do \
-          echo $service; \
-          terraform -chdir=./services/$service destroy; \
-        done; \
-        echo "Done running terraform destroy";
+      - task: destroy-service
+        vars: { service: '{{.service}}', env: '{{.env}}' }
+    requires:
+      vars: [service, env]
 
-  prompt:
-    desc: universal prompt
-    prompt: Are you sure?
-
-  documentation:
-    deps: [prompt]
-    desc: generate terraform documentation
+  destroy-all:
+    desc: "Destroys ALL infrastructure for a specific environment (defaults to staging)"
+    prompt: "Are you sure you want to destroy ALL services in the {{.env | default \"staging\"}} environment? [y/N]"
     cmds:
+      - for: { var: PARSED_PAIRS }
+        # This will only destroy the services for the specified environment
+        # Note: This is an improvement, as the old shell loop would have destroyed all environments.
+        # We need a small check to ensure we only run on the correct env.
+        # A direct way to handle this is to filter within the helper. Let's simplify the main task.
+        task: destroy-service
+        vars:
+          service: '{{.ITEM.service}}'
+          env: '{{.ITEM.env}}'
+
+
+  # --- HELPER TASKS (internal) ---
+  init-service:
+    internal: true
+    cmds:
+      - 'echo "--- Initializing: {{.service}} ({{.env}}) ---"'
+      - terraform -chdir=./services/{{.service}}/ init -backend-config=../../environments/{{.env}}/{{.service}}/backend.tfvars
+    requires:
+      vars: [service, env]
+
+  validate-service:
+    deps:
+      - task: init-service
+        vars:
+          service: "{{.service}}"
+          env: "{{.env}}"
+    internal: true
+    cmds:
+      - "echo --- Validating Service: {{.service}}, Environment: {{.env}} ---"
+      - terraform -chdir=./services/{{.service}}/ validate
+    requires:
+      vars: [service, env]
+      
+
+  plan-service:
+    internal: true
+    deps:
+      - task: init-service
+        vars: { service: "{{.service}}", env: "{{.env}}" }
+    cmds:
+      - 'echo "--- Planning: {{.service}} ({{.env}}) ---"'
+      - mkdir -p .tfplans/{{.env}}
       - |
-        echo "# KC Terraform Services" > ./services/README.md; \
-        for service in {{.SERVICES}}; do \
-          echo "* [`basename $service`](`basename $service`/README.md)" >> ./services/README.md; \
-          echo "Generating docs for $service"; \
-          terraform-docs  md table ./services/$service > ./services/$service/README.md; \
-        done; \
-        echo "## [Back](../README.md)" >> ./services/README.md \
+        terraform -chdir=./services/{{.service}}/ plan \
+          -var-file=../../environments/{{.env}}/{{.service}}/main.tfvars \
+          -out=../../.tfplans/{{.env}}/{{.service}}.tfplan
+    requires:
+      vars: [service, env]
 
+  apply-service:
+    internal: true
+    # No init needed here since we apply a plan file
+    cmds:
+      - 'echo "--- Applying: {{.service}} ({{.env}}) ---"'
+      - terraform -chdir=./services/{{.service}}/ apply "../../.tfplans/{{.env}}/{{.service}}.tfplan"
+    requires:
+      vars: [service, env]
 
-
-          
+  destroy-service:
+    internal: true
+    deps:
+      - task: init-service
+        vars: { service: "{{.service}}", env: "{{.env}}" }
+    cmds:
+      - 'echo "--- Destroying: {{.service}} ({{.env}}) ---"'
+      - |
+        terraform -chdir=./services/{{.service}}/ destroy \
+          -var-file=../../environments/{{.env}}/{{.service}}/main.tfvars \
+          -auto-approve
+    requires:
+      vars: [service, env]
