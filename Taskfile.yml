@@ -22,7 +22,8 @@ vars:
   # Parses the JSON string into a structured list that Task can iterate over.
   PARSED_PAIRS:
     ref: fromJson .SERVICE_ENV_PAIRS
-.
+
+
   # Determines which services have changed. Adapts for CI vs. local environments.
   CHANGED_SERVICES:
     sh: |
