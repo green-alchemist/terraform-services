@@ -1,0 +1,202 @@
+version: 2.1
+
+# Pipeline Parameters allow for triggering specific workflows via the API.
+parameters:
+  run_gatsby_deployment:
+    type: boolean
+    default: false
+
+# Orbs provide pre-packaged CircleCI configuration for common tools.
+orbs:
+  node: circleci/node@5.0.2
+  aws-cli: circleci/aws-cli@3.1.1
+  terraform: circleci/terraform@3.2.0
+  slack: circleci/slack@4.12.0
+
+# Anchors allow for reusing YAML configuration.
+anchors:
+  # Defines the CircleCI contexts that contain secrets.
+  - &context
+    context:
+      - aws-credentials      # For AWS access keys
+      - circleci-secrets     # For GATSBY_REPO_URL
+      - slack-notifications  # For the Slack webhook URL
+
+  # Defines a filter to run jobs only on the 'main' branch.
+  - &main_branch_filter
+    filters:
+      branches:
+        only:
+          - master
+
+  # Attaches the workspace to persist files between jobs.
+  - &attach_workspace
+    attach_workspace:
+      at: ~/project
+
+# Reusable commands for notifications.
+commands:
+  notify_slack_on_failure:
+    steps:
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+  notify_slack_on_success:
+    steps:
+      - slack/notify:
+          event: pass
+          template: basic_success_1
+
+# Jobs define the individual steps of the CI/CD process.
+jobs:
+  # ===============================================
+  # Terraform Infrastructure Jobs
+  # ===============================================
+  terraform_validate:
+    executor: terraform/default
+    steps:
+      - checkout
+      - run:
+          name: "Validate changed services"
+          command: task validate-changed
+      - notify_slack_on_failure
+
+  terraform_plan:
+    executor: terraform/default
+    steps:
+      - checkout
+      - run:
+          name: "Create Terraform plan for changed services"
+          command: task plan-changed env=staging
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .tfplans
+      - notify_slack_on_failure
+
+  terraform_apply:
+    executor: terraform/default
+    steps:
+      - *attach_workspace
+      - run:
+          name: "Apply Terraform plan for changed services"
+          command: task apply-changed env=staging
+      - notify_slack_on_failure
+      - notify_slack_on_success
+
+  # ===============================================
+  # Gatsby Application Deployment Job
+  # ===============================================
+  build_and_deploy_gatsby:
+    docker:
+      - image: cimg/node:16.17-browsers
+    steps:
+      - checkout # Checks out terraform-services repo
+      - aws-cli/setup
+      # Add the SSH key from CircleCI project settings
+      - add_ssh_keys
+
+      # 1. Checkout the Gatsby application code from its separate repository using SSH
+      - run:
+          name: "Checkout Gatsby Application Code"
+          command: |
+            # Clones the repository using the SSH URL
+            git clone git@github.com:green-alchemist/portfolio-gatsby.git gatsby-app
+      
+      # 2. Get the S3 Bucket Name and CloudFront ID from Terraform's remote state
+      - terraform/install
+      - run:
+          name: "Fetch Terraform Outputs for Deployment"
+          command: |
+            # This small Terraform config reads the outputs from your existing state file
+            cat << EOF > get-outputs.tf
+            terraform {
+              backend "s3" {
+                bucket  = "${TF_STATE_BUCKET}"
+                key     = "portfolio-gatsby/staging/terraform.tfstate"
+                region  = "us-east-1"
+                encrypt = true
+              }
+            }
+            data "terraform_remote_state" "gatsby" {
+              backend = "s3"
+              config = {
+                bucket  = "${TF_STATE_BUCKET}"
+                key     = "portfolio-gatsby/staging/terraform.tfstate"
+                region  = "us-east-1"
+              }
+            }
+            EOF
+
+            terraform init
+            S3_BUCKET=$(terraform output -json | jq -r .s3_bucket_name.value)
+            CF_DIST_ID=$(terraform output -json | jq -r .cloudfront_distribution_id.value)
+
+            echo "export S3_BUCKET_NAME=${S3_BUCKET}" >> $BASH_ENV
+            echo "export CLOUDFRONT_ID=${CF_DIST_ID}" >> $BASH_ENV
+            echo "S3 Bucket: \$S3_BUCKET_NAME"
+            echo "CloudFront ID: \$CLOUDFRONT_ID"
+            
+      # 3. Build the Gatsby site
+      - node/install-packages:
+          cwd: ./gatsby-app
+      - run:
+          name: "Build Gatsby Site"
+          command: |
+            cd ./gatsby-app
+            npm run build
+            
+      # 4. Deploy the built site to the S3 bucket
+      - run:
+          name: "Deploy to S3"
+          command: aws s3 sync ./gatsby-app/public s3://${S3_BUCKET_NAME} --delete
+
+      # 5. Invalidate the CloudFront cache to serve the new version
+      - run:
+          name: "Invalidate CloudFront Cache"
+          command: aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_ID} --paths "/*"
+      - notify_slack_on_failure
+      - notify_slack_on_success
+
+# Workflows orchestrate the execution of jobs.
+workflows:
+  # This workflow manages your Terraform infrastructure. It will NOT run for API-triggered builds.
+  terraform-ci-cd:
+    unless: << pipeline.parameters.run_gatsby_deployment >>
+    jobs:
+      - terraform_validate:
+          <<: *context
+          <<: *main_branch_filter
+      - terraform_plan:
+          <<: *context
+          <<: *main_branch_filter
+          requires:
+            - terraform_validate
+      - hold-for-apply:
+          type: approval
+          requires:
+            - terraform_plan
+      - terraform_apply:
+          <<: *context
+          <<: *main_branch_filter
+          requires:
+            - hold-for-apply
+
+  # This workflow deploys your Gatsby application via a git tag. It will NOT run for API-triggered builds.
+  deploy-portfolio-gatsby-by-tag:
+    unless: << pipeline.parameters.run_gatsby_deployment >>
+    jobs:
+      - build_and_deploy_gatsby:
+          <<: *context
+          filters:
+            tags:
+              only: /^deploy-.*/
+            branches:
+              ignore: /.*/
+  
+  # This workflow is ONLY for triggering a Gatsby deployment via an API call (e.g., from a Strapi webhook).
+  api-triggered-deployment:
+    when: << pipeline.parameters.run_gatsby_deployment >>
+    jobs:
+      - build_and_deploy_gatsby:
+          <<: *context
