@@ -11,6 +11,7 @@ orbs:
   node: circleci/node@5.0.2
   aws-cli: circleci/aws-cli@3.1.1
   terraform: circleci/terraform@3.2.0
+  discord: antonioned/discord@0.2.0
 
 # Anchors allow for reusing YAML configuration.
 anchors:
@@ -19,7 +20,7 @@ anchors:
     context:
       - aws-credentials      # For AWS access keys
       - circleci-secrets     # For TF_STATE_BUCKET
-      - slack-notifications  # For Slack & Discord webhooks
+      - slack-notifications  # For Discord webhook (expects DISCORD_STATUS_WEBHOOK)
 
   # Defines a filter to run jobs only on the 'master' branch.
   - &master_branch_filter
@@ -33,7 +34,7 @@ anchors:
     attach_workspace:
       at: ~/project
 
-# Reusable commands for notifications and setup.
+# Reusable commands for setup.
 commands:
   install_task:
     steps:
@@ -44,50 +45,6 @@ commands:
           command: |
             apk add --no-cache curl
             sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
-
-  notify_discord_on_failure:
-    steps:
-      - run:
-          name: "Send Discord Notification on Failure"
-          when: on_fail
-          command: |
-            curl -X POST -H "Content-Type: application/json" \
-            -d '{
-              "embeds": [{
-                "title": "🔴 Build Failed: << pipeline.project.git_url >>",
-                "description": "The job `<< job.name >>` in the `<< workflow.name >>` workflow has failed.",
-                "url": "<< pipeline.build.url >>",
-                "color": 15158332,
-                "fields": [
-                  {"name": "Branch", "value": "`<< pipeline.git.branch >>`", "inline": true},
-                  {"name": "Commit", "value": "`<< pipeline.git.revision >>`", "inline": true}
-                ],
-                "footer": {
-                  "text": "Triggered by << pipeline.user.name >>"
-                }
-              }]
-            }' \
-            ${DISCORD_WEBHOOK_URL}
-
-  notify_discord_on_success:
-    steps:
-      - run:
-          name: "Send Discord Notification on Success"
-          when: on_success
-          command: |
-            curl -X POST -H "Content-Type: application/json" \
-            -d '{
-              "embeds": [{
-                "title": "✅ Build Successful: << pipeline.project.git_url >>",
-                "description": "The job `<< job.name >>` in the `<< workflow.name >>` workflow has passed.",
-                "url": "<< pipeline.build.url >>",
-                "color": 3066993,
-                "footer": {
-                  "text": "Triggered by << pipeline.user.name >>"
-                }
-              }]
-            }' \
-            ${DISCORD_WEBHOOK_URL}
 
 # Jobs define the individual steps of the CI/CD process.
 jobs:
@@ -102,7 +59,10 @@ jobs:
       - run:
           name: "Validate changed services"
           command: task validate-changed
-      # - notify_discord_on_failure
+      - discord/status:
+          fail_only: true
+          failure_message: "🔴 Terraform validation failed for **${CIRCLE_PROJECT_REPONAME}**."
+          webhook: "$DISCORD_STATUS_WEBHOOK"
 
   terraform_plan:
     executor: terraform/default
@@ -116,7 +76,10 @@ jobs:
           root: .
           paths:
             - .tfplans
-      # - notify_discord_on_failure
+      - discord/status:
+          fail_only: true
+          failure_message: "🔴 Terraform plan failed for **${CIRCLE_PROJECT_REPONAME}**."
+          webhook: "$DISCORD_STATUS_WEBHOOK"
 
   terraform_apply:
     executor: terraform/default
@@ -126,8 +89,11 @@ jobs:
       - run:
           name: "Apply Terraform plan for changed services"
           command: task apply-changed env=staging
-      - notify_discord_on_failure
-      - notify_discord_on_success
+      - discord/status:
+          fail_only: false
+          success_message: "✅ Terraform apply successful for **${CIRCLE_PROJECT_REPONAME}**."
+          failure_message: "🔴 Terraform apply failed for **${CIRCLE_PROJECT_REPONAME}**."
+          webhook: "$DISCORD_STATUS_WEBHOOK"
 
   # ===============================================
   # Gatsby Application Deployment Job
@@ -181,8 +147,11 @@ jobs:
       - run:
           name: "Invalidate CloudFront Cache"
           command: aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_ID} --paths "/*"
-      - notify_discord_on_failure
-      - notify_discord_on_success
+      - discord/status:
+          fail_only: false
+          success_message: "✅ Gatsby site deployed successfully to **${S3_BUCKET_NAME}**."
+          failure_message: "🔴 Gatsby site deployment failed for **${CIRCLE_PROJECT_REPONAME}**."
+          webhook: "$DISCORD_STATUS_WEBHOOK"
 
 # Workflows orchestrate the execution of jobs.
 workflows:
