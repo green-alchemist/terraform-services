@@ -22,12 +22,18 @@ vars:
   # Parses the JSON string into a structured list that Task can iterate over.
   PARSED_PAIRS:
     ref: fromJson .SERVICE_ENV_PAIRS
-
-  # Determines which services have changed compared to the main branch.
-  # This is ideal for CI/CD pipelines.
+.
+  # Determines which services have changed. Adapts for CI vs. local environments.
   CHANGED_SERVICES:
-    sh: git diff --name-only master... | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
-
+    sh: |
+      if [ -n "${CIRCLE_SHA1}" ]; then
+        # In CI: Use the specific commit SHA to find changed files.
+        git show --name-only --oneline "${CIRCLE_SHA1}" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ';
+      else
+        # Locally: Diff the current branch against the 'master' branch.
+        git diff --name-only master... | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ';
+      fi
+    
   # Lists all available services based on the services/ directory.
   ALL_SERVICES:
     sh: find services -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | tr '\n' ' '
