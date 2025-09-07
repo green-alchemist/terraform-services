@@ -4,18 +4,22 @@ No requirements.
 
 ## Providers
 
-No providers.
+| Name | Version |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.12.0 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_cloudfront_static_site"></a> [cloudfront\_static\_site](#module\_cloudfront\_static\_site) | git@github.com:green-alchemist/terraform-modules.git//modules/cloudfront | n/a |
-| <a name="module_s3_static_site"></a> [s3\_static\_site](#module\_s3\_static\_site) | git@github.com:green-alchemist/terraform-modules.git//modules/s3-static-site | n/a |
+| <a name="module_s3_site"></a> [s3\_site](#module\_s3\_site) | git@github.com:green-alchemist/terraform-modules.git//modules/s3-static-site | n/a |
 
 ## Resources
 
-No resources.
+| Name | Type |
+|------|------|
+| [aws_route53_zone.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) | data source |
 
 ## Inputs
 
