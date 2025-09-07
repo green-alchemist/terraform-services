@@ -11,7 +11,6 @@ orbs:
   node: circleci/node@5.0.2
   aws-cli: circleci/aws-cli@3.1.1
   terraform: circleci/terraform@3.2.0
-  slack: circleci/slack@4.12.0
 
 # Anchors allow for reusing YAML configuration.
 anchors:
@@ -20,14 +19,14 @@ anchors:
     context:
       - aws-credentials      # For AWS access keys
       - circleci-secrets     # For TF_STATE_BUCKET
-      - slack-notifications  # For the Slack webhook URL
+      - slack-notifications  # For Slack & Discord webhooks
 
   # Defines a filter to run jobs only on the 'master' branch.
   - &master_branch_filter
     filters:
       branches:
         only:
-          - kyle
+          - master
 
   # Attaches the workspace to persist files between jobs.
   - &attach_workspace
@@ -40,20 +39,55 @@ commands:
     steps:
       - run:
           name: "Install Task"
+          # The terraform executor is a minimal Alpine Linux image.
+          # We must first install curl, then run the script without sudo.
           command: |
-            echo "Installing Task..."
-            sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+            apk add --no-cache curl
+            sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
-  notify_slack_on_failure:
+  notify_discord_on_failure:
     steps:
-      - slack/notify:
-          event: fail
-          template: basic_fail_1
-  notify_slack_on_success:
+      - run:
+          name: "Send Discord Notification on Failure"
+          when: on_fail
+          command: |
+            curl -X POST -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "🔴 Build Failed: << pipeline.project.git_url >>",
+                "description": "The job `<< job.name >>` in the `<< workflow.name >>` workflow has failed.",
+                "url": "<< pipeline.build.url >>",
+                "color": 15158332,
+                "fields": [
+                  {"name": "Branch", "value": "`<< pipeline.git.branch >>`", "inline": true},
+                  {"name": "Commit", "value": "`<< pipeline.git.revision >>`", "inline": true}
+                ],
+                "footer": {
+                  "text": "Triggered by << pipeline.user.name >>"
+                }
+              }]
+            }' \
+            ${DISCORD_WEBHOOK_URL}
+
+  notify_discord_on_success:
     steps:
-      - slack/notify:
-          event: pass
-          template: basic_success_1
+      - run:
+          name: "Send Discord Notification on Success"
+          when: on_success
+          command: |
+            curl -X POST -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "✅ Build Successful: << pipeline.project.git_url >>",
+                "description": "The job `<< job.name >>` in the `<< workflow.name >>` workflow has passed.",
+                "url": "<< pipeline.build.url >>",
+                "color": 3066993,
+                "footer": {
+                  "text": "Triggered by << pipeline.user.name >>"
+                }
+              }]
+            }' \
+            ${DISCORD_WEBHOOK_URL}
 
 # Jobs define the individual steps of the CI/CD process.
 jobs:
@@ -68,7 +102,7 @@ jobs:
       - run:
           name: "Validate changed services"
           command: task validate-changed
-      - notify_slack_on_failure
+      # - notify_discord_on_failure
 
   terraform_plan:
     executor: terraform/default
@@ -82,7 +116,7 @@ jobs:
           root: .
           paths:
             - .tfplans
-      - notify_slack_on_failure
+      # - notify_discord_on_failure
 
   terraform_apply:
     executor: terraform/default
@@ -92,8 +126,8 @@ jobs:
       - run:
           name: "Apply Terraform plan for changed services"
           command: task apply-changed env=staging
-      - notify_slack_on_failure
-      - notify_slack_on_success
+      - notify_discord_on_failure
+      - notify_discord_on_success
 
   # ===============================================
   # Gatsby Application Deployment Job
@@ -147,8 +181,8 @@ jobs:
       - run:
           name: "Invalidate CloudFront Cache"
           command: aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_ID} --paths "/*"
-      - notify_slack_on_failure
-      - notify_slack_on_success
+      - notify_discord_on_failure
+      - notify_discord_on_success
 
 # Workflows orchestrate the execution of jobs.
 workflows:
