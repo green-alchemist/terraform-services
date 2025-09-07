@@ -3,12 +3,6 @@ provider "aws" {
   profile = var.aws_profile
 }
 
-# --- NEW: Look up the existing Route 53 hosted zone for your domain ---
-# This assumes the zone has already been created (e.g., by using the new route53-zone module).
-data "aws_route53_zone" "this" {
-  name = var.domain_name
-}
-
 # ------------------------------------------------------------------------------
 # S3 Bucket for Static Site Hosting
 # ------------------------------------------------------------------------------
@@ -34,9 +28,9 @@ module "cloudfront_static_site" {
 # ------------------------------------------------------------------------------
 # Route 53 DNS Records
 # ------------------------------------------------------------------------------
-# data "aws_route53_zone" "primary" {
-#   name = var.domain_name
-# }
+data "aws_route53_zone" "this" {
+  name = var.domain_name
+}
 
 # resource "aws_route53_record" "www" {
 #   zone_id = data.aws_route53_zone.primary.zone_id
