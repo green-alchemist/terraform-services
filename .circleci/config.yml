@@ -59,10 +59,10 @@ jobs:
       - run:
           name: "Validate changed services"
           command: task validate-changed
-      - discord/status:
-          fail_only: true
-          failure_message: "🔴 Terraform validation failed for **${CIRCLE_PROJECT_REPONAME}**."
-          webhook: "$DISCORD_STATUS_WEBHOOK"
+      # - discord/status:
+      #     fail_only: true
+      #     failure_message: "🔴 Terraform validation failed for **${CIRCLE_PROJECT_REPONAME}**."
+      #     webhook: "$DISCORD_STATUS_WEBHOOK"
 
   terraform_plan:
     executor: terraform/default
@@ -76,10 +76,10 @@ jobs:
           root: .
           paths:
             - .tfplans
-      - discord/status:
-          fail_only: true
-          failure_message: "🔴 Terraform plan failed for **${CIRCLE_PROJECT_REPONAME}**."
-          webhook: "$DISCORD_STATUS_WEBHOOK"
+      # - discord/status:
+      #     fail_only: true
+      #     failure_message: "🔴 Terraform plan failed for **${CIRCLE_PROJECT_REPONAME}**."
+      #     webhook: "$DISCORD_STATUS_WEBHOOK"
 
   terraform_apply:
     executor: terraform/default
@@ -89,11 +89,11 @@ jobs:
       - run:
           name: "Apply Terraform plan for changed services"
           command: task apply-changed env=staging
-      - discord/status:
-          fail_only: false
-          success_message: "✅ Terraform apply successful for **${CIRCLE_PROJECT_REPONAME}**."
-          failure_message: "🔴 Terraform apply failed for **${CIRCLE_PROJECT_REPONAME}**."
-          webhook: "$DISCORD_STATUS_WEBHOOK"
+      # - discord/status:
+      #     fail_only: false
+      #     success_message: "✅ Terraform apply successful for **${CIRCLE_PROJECT_REPONAME}**."
+      #     failure_message: "🔴 Terraform apply failed for **${CIRCLE_PROJECT_REPONAME}**."
+      #     webhook: "$DISCORD_STATUS_WEBHOOK"
 
   # ===============================================
   # Gatsby Application Deployment Job
