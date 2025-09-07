@@ -40,11 +40,9 @@ commands:
     steps:
       - run:
           name: "Install Task"
-          # The terraform executor is a minimal Alpine Linux image.
-          # We must first install curl, then run the script without sudo.
+          # This command requires curl and sudo, which are available in cimg/base.
           command: |
-            apk add --no-cache curl
-            sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+            sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
 # Jobs define the individual steps of the CI/CD process.
 jobs:
@@ -52,26 +50,30 @@ jobs:
   # Terraform Infrastructure Jobs
   # ===============================================
   terraform_validate:
-    executor: terraform/default
+    docker:
+      - image: cimg/base:stable
     steps:
       - checkout
       - aws-cli/setup:
           role-arn: ${AWS_OIDC_ROLE_ARN}
+      - terraform/install
       - install_task
       - run:
           name: "Validate changed services"
           command: task validate-changed
-      # - discord/status:
-      #     fail_only: true
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Terraform validation failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+      - discord/status:
+          fail_only: true
+          webhook: "${DISCORD_STATUS_WEBHOOK}"
+          failure_message: "🚨 Terraform validation failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
   terraform_plan:
-    executor: terraform/default
+    docker:
+      - image: cimg/base:stable
     steps:
       - checkout
       - aws-cli/setup:
           role-arn: ${AWS_OIDC_ROLE_ARN}
+      - terraform/install
       - install_task
       - run:
           name: "Create Terraform plan for changed services"
@@ -80,25 +82,27 @@ jobs:
           root: .
           paths:
             - .tfplans
-      # - discord/status:
-      #     fail_only: true
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Terraform plan failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+      - discord/status:
+          fail_only: true
+          webhook: "${DISCORD_STATUS_WEBHOOK}"
+          failure_message: "🚨 Terraform plan failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
   terraform_apply:
-    executor: terraform/default
+    docker:
+      - image: cimg/base:stable
     steps:
       - *attach_workspace
       - aws-cli/setup:
           role-arn: ${AWS_OIDC_ROLE_ARN}
+      - terraform/install
       - install_task
       - run:
           name: "Apply Terraform plan for changed services"
           command: task apply-changed env=staging
-      # - discord/status:
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Terraform apply failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
-      #     success_message: "✅ Terraform apply succeeded for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+      - discord/status:
+          webhook: "${DISCORD_STATUS_WEBHOOK}"
+          failure_message: "🚨 Terraform apply failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+          success_message: "✅ Terraform apply succeeded for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
   # ===============================================
   # Gatsby Application Deployment Job
@@ -111,28 +115,14 @@ jobs:
       - aws-cli/setup:
           role-arn: ${AWS_OIDC_ROLE_ARN}
       - add_ssh_keys
+      - terraform/install
 
       # 1. Checkout the Gatsby application code
       - run:
           name: "Checkout Gatsby Application Code"
           command: git clone git@github.com:green-alchemist/portfolio-gatsby.git gatsby-app
-      
-      # 2. Get the S3 Bucket Name and CloudFront ID from Terraform
-      - terraform/install
-      - run:
-          name: "Fetch Terraform Outputs for Deployment"
-          command: |
-            cd ci
-            terraform init -backend-config="bucket=${TF_STATE_BUCKET}"
-            S3_BUCKET=$(terraform output -raw s3_bucket_name -var="tf_state_bucket=${TF_STATE_BUCKET}")
-            CF_DIST_ID=$(terraform output -raw cloudfront_distribution_id -var="tf_state_bucket=${TF_STATE_BUCKET}")
-
-            echo "export S3_BUCKET_NAME=${S3_BUCKET}" >> $BASH_ENV
-            echo "export CLOUDFRONT_ID=${CF_DIST_ID}" >> $BASH_ENV
-            echo "S3 Bucket: \$S3_BUCKET_NAME"
-            echo "CloudFront ID: \$CLOUDFRONT_ID"
             
-      # 3. Build the Gatsby site
+      # 2. Build the Gatsby site
       - run:
           name: "Install Gatsby Dependencies"
           command: |
@@ -144,19 +134,29 @@ jobs:
             cd gatsby-app
             npm run build
             
-      # 4. Deploy the built site to the S3 bucket
+      # 3. Fetch Outputs, Deploy to S3, and Invalidate CloudFront
       - run:
-          name: "Deploy to S3"
-          command: aws s3 sync ./gatsby-app/public s3://${S3_BUCKET_NAME} --delete
+          name: "Deploy and Invalidate"
+          command: |
+            echo "Fetching Terraform outputs..."
+            cd ci
+            terraform init -backend-config="bucket=${TF_STATE_BUCKET}"
+            S3_BUCKET=$(terraform output -raw s3_bucket_name)
+            CF_DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+            
+            echo "S3 Bucket: ${S3_BUCKET}"
+            echo "CloudFront ID: ${CF_DIST_ID}"
 
-      # 5. Invalidate the CloudFront cache
-      - run:
-          name: "Invalidate CloudFront Cache"
-          command: aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_ID} --paths "/*"
-      # - discord/status:
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Gatsby deployment failed for tag `${CIRCLE_TAG}`."
-      #     success_message: "✅ Gatsby site deployed successfully for tag `${CIRCLE_TAG}`."
+            echo "Deploying to S3..."
+            aws s3 sync ../gatsby-app/public s3://${S3_BUCKET} --delete
+
+            echo "Invalidating CloudFront cache..."
+            aws cloudfront create-invalidation --distribution-id ${CF_DIST_ID} --paths "/*"
+
+      - discord/status:
+          webhook: "${DISCORD_STATUS_WEBHOOK}"
+          failure_message: "🚨 Gatsby deployment failed for tag `${CIRCLE_TAG}`."
+          success_message: "✅ Gatsby site deployed successfully for tag `${CIRCLE_TAG}`."
 
 # Workflows orchestrate the execution of jobs.
 workflows:
