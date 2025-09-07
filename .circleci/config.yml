@@ -117,12 +117,15 @@ jobs:
             echo "CloudFront ID: \$CLOUDFRONT_ID"
             
       # 3. Build the Gatsby site
-      - node/install-packages:
-          cwd: ./gatsby-app
+      - run:
+          name: "Install Gatsby Dependencies"
+          command: |
+            cd gatsby-app
+            npm install
       - run:
           name: "Build Gatsby Site"
           command: |
-            cd ./gatsby-app
+            cd gatsby-app
             npm run build
             
       # 4. Deploy the built site to the S3 bucket
@@ -179,4 +182,3 @@ workflows:
     jobs:
       - build_and_deploy_gatsby:
           <<: *context
-
