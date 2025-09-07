@@ -61,10 +61,10 @@ jobs:
       - run:
           name: "Validate changed services"
           command: task validate-changed
-      - discord/status:
-          fail_only: true
-          webhook: "${DISCORD_STATUS_WEBHOOK}"
-          failure_message: "🚨 Terraform validation failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+      # - discord/status:
+      #     fail_only: true
+      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
+      #     failure_message: "🚨 Terraform validation failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
   terraform_plan:
     docker:
@@ -82,10 +82,10 @@ jobs:
           root: .
           paths:
             - .tfplans
-      - discord/status:
-          fail_only: true
-          webhook: "${DISCORD_STATUS_WEBHOOK}"
-          failure_message: "🚨 Terraform plan failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+      # - discord/status:
+      #     fail_only: true
+      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
+      #     failure_message: "🚨 Terraform plan failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
   terraform_apply:
     docker:
@@ -99,10 +99,10 @@ jobs:
       - run:
           name: "Apply Terraform plan for changed services"
           command: task apply-changed env=staging
-      - discord/status:
-          webhook: "${DISCORD_STATUS_WEBHOOK}"
-          failure_message: "🚨 Terraform apply failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
-          success_message: "✅ Terraform apply succeeded for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+      # - discord/status:
+      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
+      #     failure_message: "🚨 Terraform apply failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+      #     success_message: "✅ Terraform apply succeeded for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
   # ===============================================
   # Gatsby Application Deployment Job
@@ -153,10 +153,10 @@ jobs:
             echo "Invalidating CloudFront cache..."
             aws cloudfront create-invalidation --distribution-id ${CF_DIST_ID} --paths "/*"
 
-      - discord/status:
-          webhook: "${DISCORD_STATUS_WEBHOOK}"
-          failure_message: "🚨 Gatsby deployment failed for tag `${CIRCLE_TAG}`."
-          success_message: "✅ Gatsby site deployed successfully for tag `${CIRCLE_TAG}`."
+      # - discord/status:
+      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
+      #     failure_message: "🚨 Gatsby deployment failed for tag `${CIRCLE_TAG}`."
+      #     success_message: "✅ Gatsby site deployed successfully for tag `${CIRCLE_TAG}`."
 
 # Workflows orchestrate the execution of jobs.
 workflows:
