@@ -109,7 +109,7 @@ jobs:
           name: "Fetch Terraform Outputs for Deployment"
           command: |
             # This small Terraform config reads the outputs from your existing state file
-            cat << EOF > get-outputs.tf
+            cat <<EOF > get-outputs.tf
             terraform {
               backend "s3" {
                 bucket  = "${TF_STATE_BUCKET}"
