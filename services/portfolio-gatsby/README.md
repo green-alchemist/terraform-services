@@ -4,7 +4,7 @@ No requirements.
 
 ## Providers
 
-No providers.
+No providers
 
 ## Modules
 
