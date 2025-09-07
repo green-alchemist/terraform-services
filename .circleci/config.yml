@@ -56,7 +56,7 @@ jobs:
     steps:
       - checkout
       - aws-cli/setup:
-          role_arn: ${AWS_OIDC_ROLE_ARN}
+          role-arn: ${AWS_OIDC_ROLE_ARN}
       - install_task
       - run:
           name: "Validate changed services"
@@ -71,7 +71,7 @@ jobs:
     steps:
       - checkout
       - aws-cli/setup:
-          role_arn: ${AWS_OIDC_ROLE_ARN}
+          role-arn: ${AWS_OIDC_ROLE_ARN}
       - install_task
       - run:
           name: "Create Terraform plan for changed services"
@@ -90,7 +90,7 @@ jobs:
     steps:
       - *attach_workspace
       - aws-cli/setup:
-          role_arn: ${AWS_OIDC_ROLE_ARN}
+          role-arn: ${AWS_OIDC_ROLE_ARN}
       - install_task
       - run:
           name: "Apply Terraform plan for changed services"
@@ -109,7 +109,7 @@ jobs:
     steps:
       - checkout # Checks out terraform-services repo
       - aws-cli/setup:
-          role_arn: ${AWS_OIDC_ROLE_ARN}
+          role-arn: ${AWS_OIDC_ROLE_ARN}
       - add_ssh_keys
 
       # 1. Checkout the Gatsby application code
