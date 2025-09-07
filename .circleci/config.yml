@@ -27,7 +27,7 @@ anchors:
     filters:
       branches:
         only:
-          - kyle
+          - master
 
   # Attaches the workspace to persist files between jobs.
   - &attach_workspace
