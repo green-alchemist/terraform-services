@@ -18,9 +18,9 @@ anchors:
   # Defines the CircleCI contexts that contain secrets.
   - &context
     context:
-      - aws-credentials      # For AWS access keys
-      - circleci-secrets     # For TF_STATE_BUCKET
-      - slack-notifications  # For Discord webhook (expects DISCORD_STATUS_WEBHOOK)
+      # aws-credentials is no longer needed when using OIDC
+      - circleci-secrets     # For TF_STATE_BUCKET, AWS_OIDC_ROLE_ARN
+      - slack-notifications  # For Discord webhook
 
   # Defines a filter to run jobs only on the 'master' branch.
   - &master_branch_filter
@@ -55,45 +55,50 @@ jobs:
     executor: terraform/default
     steps:
       - checkout
+      - aws-cli/setup:
+          role_arn: ${AWS_OIDC_ROLE_ARN}
       - install_task
       - run:
           name: "Validate changed services"
           command: task validate-changed
       # - discord/status:
       #     fail_only: true
-      #     failure_message: "🔴 Terraform validation failed for **${CIRCLE_PROJECT_REPONAME}**."
-      #     webhook: "$DISCORD_STATUS_WEBHOOK"
+      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
+      #     failure_message: "🚨 Terraform validation failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
   terraform_plan:
     executor: terraform/default
     steps:
       - checkout
+      - aws-cli/setup:
+          role_arn: ${AWS_OIDC_ROLE_ARN}
       - install_task
       - run:
           name: "Create Terraform plan for changed services"
-          command: task print && task plan-changed env=staging
+          command: task plan-changed env=staging
       - persist_to_workspace:
           root: .
           paths:
             - .tfplans
       # - discord/status:
       #     fail_only: true
-      #     failure_message: "🔴 Terraform plan failed for **${CIRCLE_PROJECT_REPONAME}**."
-      #     webhook: "$DISCORD_STATUS_WEBHOOK"
+      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
+      #     failure_message: "🚨 Terraform plan failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
   terraform_apply:
     executor: terraform/default
     steps:
       - *attach_workspace
+      - aws-cli/setup:
+          role_arn: ${AWS_OIDC_ROLE_ARN}
       - install_task
       - run:
           name: "Apply Terraform plan for changed services"
           command: task apply-changed env=staging
       # - discord/status:
-      #     fail_only: false
-      #     success_message: "✅ Terraform apply successful for **${CIRCLE_PROJECT_REPONAME}**."
-      #     failure_message: "🔴 Terraform apply failed for **${CIRCLE_PROJECT_REPONAME}**."
-      #     webhook: "$DISCORD_STATUS_WEBHOOK"
+      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
+      #     failure_message: "🚨 Terraform apply failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+      #     success_message: "✅ Terraform apply succeeded for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
   # ===============================================
   # Gatsby Application Deployment Job
@@ -103,7 +108,8 @@ jobs:
       - image: cimg/node:16.17-browsers
     steps:
       - checkout # Checks out terraform-services repo
-      - aws-cli/setup
+      - aws-cli/setup:
+          role_arn: ${AWS_OIDC_ROLE_ARN}
       - add_ssh_keys
 
       # 1. Checkout the Gatsby application code
@@ -147,11 +153,10 @@ jobs:
       - run:
           name: "Invalidate CloudFront Cache"
           command: aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_ID} --paths "/*"
-      - discord/status:
-          fail_only: false
-          success_message: "✅ Gatsby site deployed successfully to **${S3_BUCKET_NAME}**."
-          failure_message: "🔴 Gatsby site deployment failed for **${CIRCLE_PROJECT_REPONAME}**."
-          webhook: "$DISCORD_STATUS_WEBHOOK"
+      # - discord/status:
+      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
+      #     failure_message: "🚨 Gatsby deployment failed for tag `${CIRCLE_TAG}`."
+      #     success_message: "✅ Gatsby site deployed successfully for tag `${CIRCLE_TAG}`."
 
 # Workflows orchestrate the execution of jobs.
 workflows:
