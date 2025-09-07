@@ -7,7 +7,7 @@
 
 ## Providers
 
-No providers.
+No providers
 
 ## Modules
 
