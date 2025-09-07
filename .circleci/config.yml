@@ -34,8 +34,16 @@ anchors:
     attach_workspace:
       at: ~/project
 
-# Reusable commands for notifications.
+# Reusable commands for notifications and setup.
 commands:
+  install_task:
+    steps:
+      - run:
+          name: "Install Task"
+          command: |
+            echo "Installing Task..."
+            sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
   notify_slack_on_failure:
     steps:
       - slack/notify:
@@ -56,6 +64,7 @@ jobs:
     executor: terraform/default
     steps:
       - checkout
+      - install_task
       - run:
           name: "Validate changed services"
           command: task validate-changed
@@ -65,6 +74,7 @@ jobs:
     executor: terraform/default
     steps:
       - checkout
+      - install_task
       - run:
           name: "Create Terraform plan for changed services"
           command: task plan-changed env=staging
@@ -78,6 +88,7 @@ jobs:
     executor: terraform/default
     steps:
       - *attach_workspace
+      - install_task
       - run:
           name: "Apply Terraform plan for changed services"
           command: task apply-changed env=staging
@@ -104,7 +115,6 @@ jobs:
       - terraform/install
       - run:
           name: "Fetch Terraform Outputs for Deployment"
-          # This command now uses the dedicated CI configuration
           command: |
             cd ci
             terraform init -backend-config="bucket=${TF_STATE_BUCKET}"
@@ -182,3 +192,4 @@ workflows:
     jobs:
       - build_and_deploy_gatsby:
           <<: *context
+
