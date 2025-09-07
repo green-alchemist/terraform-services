@@ -22,8 +22,8 @@ anchors:
       - circleci-secrets     # For GATSBY_REPO_URL
       - slack-notifications  # For the Slack webhook URL
 
-  # Defines a filter to run jobs only on the 'main' branch.
-  - &main_branch_filter
+  # Defines a filter to run jobs only on the 'master' branch.
+  - &master_branch_filter
     filters:
       branches:
         only:
@@ -108,7 +108,8 @@ jobs:
       - run:
           name: "Fetch Terraform Outputs for Deployment"
           command: |
-            # This small Terraform config reads the outputs from your existing state file
+            # This small Terraform config reads the outputs from your existing state file.
+            # The final EOF must NOT be indented.
             cat <<EOF > get-outputs.tf
             terraform {
               backend "s3" {
@@ -126,11 +127,21 @@ jobs:
                 region  = "us-east-1"
               }
             }
+
+            output "s3_bucket_name" {
+              value = data.terraform_remote_state.gatsby.outputs.s3_bucket_name
+            }
+
+            output "cloudfront_distribution_id" {
+              value = data.terraform_remote_state.gatsby.outputs.cloudfront_distribution_id
+            }
             EOF
 
             terraform init
-            S3_BUCKET=$(terraform output -json | jq -r .s3_bucket_name.value)
-            CF_DIST_ID=$(terraform output -json | jq -r .cloudfront_distribution_id.value)
+            
+            # Use -raw to get the direct value without JSON parsing
+            S3_BUCKET=$(terraform output -raw s3_bucket_name)
+            CF_DIST_ID=$(terraform output -raw cloudfront_distribution_id)
 
             echo "export S3_BUCKET_NAME=${S3_BUCKET}" >> $BASH_ENV
             echo "export CLOUDFRONT_ID=${CF_DIST_ID}" >> $BASH_ENV
@@ -166,10 +177,10 @@ workflows:
     jobs:
       - terraform_validate:
           <<: *context
-          <<: *main_branch_filter
+          <<: *master_branch_filter
       - terraform_plan:
           <<: *context
-          <<: *main_branch_filter
+          <<: *master_branch_filter
           requires:
             - terraform_validate
       - hold-for-apply:
@@ -178,7 +189,7 @@ workflows:
             - terraform_plan
       - terraform_apply:
           <<: *context
-          <<: *main_branch_filter
+          <<: *master_branch_filter
           requires:
             - hold-for-apply
 
@@ -200,3 +211,4 @@ workflows:
     jobs:
       - build_and_deploy_gatsby:
           <<: *context
+
