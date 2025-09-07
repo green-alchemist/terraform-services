@@ -19,7 +19,7 @@ anchors:
   - &context
     context:
       - aws-credentials      # For AWS access keys
-      - circleci-secrets     # For GATSBY_REPO_URL
+      - circleci-secrets     # For TF_STATE_BUCKET
       - slack-notifications  # For the Slack webhook URL
 
   # Defines a filter to run jobs only on the 'master' branch.
@@ -93,55 +93,23 @@ jobs:
     steps:
       - checkout # Checks out terraform-services repo
       - aws-cli/setup
-      # Add the SSH key from CircleCI project settings
       - add_ssh_keys
 
-      # 1. Checkout the Gatsby application code from its separate repository using SSH
+      # 1. Checkout the Gatsby application code
       - run:
           name: "Checkout Gatsby Application Code"
-          command: |
-            # Clones the repository using the SSH URL
-            git clone git@github.com:green-alchemist/portfolio-gatsby.git gatsby-app
+          command: git clone git@github.com:green-alchemist/portfolio-gatsby.git gatsby-app
       
-      # 2. Get the S3 Bucket Name and CloudFront ID from Terraform's remote state
+      # 2. Get the S3 Bucket Name and CloudFront ID from Terraform
       - terraform/install
       - run:
           name: "Fetch Terraform Outputs for Deployment"
+          # This command now uses the dedicated CI configuration
           command: |
-            # This small Terraform config reads the outputs from your existing state file.
-            # The final EOF must NOT be indented.
-            cat <<EOF > get-outputs.tf
-            terraform {
-              backend "s3" {
-                bucket  = "${TF_STATE_BUCKET}"
-                key     = "portfolio-gatsby/staging/terraform.tfstate"
-                region  = "us-east-1"
-                encrypt = true
-              }
-            }
-            data "terraform_remote_state" "gatsby" {
-              backend = "s3"
-              config = {
-                bucket  = "${TF_STATE_BUCKET}"
-                key     = "portfolio-gatsby/staging/terraform.tfstate"
-                region  = "us-east-1"
-              }
-            }
-
-            output "s3_bucket_name" {
-              value = data.terraform_remote_state.gatsby.outputs.s3_bucket_name
-            }
-
-            output "cloudfront_distribution_id" {
-              value = data.terraform_remote_state.gatsby.outputs.cloudfront_distribution_id
-            }
-            EOF
-
-            terraform init
-            
-            # Use -raw to get the direct value without JSON parsing
-            S3_BUCKET=$(terraform output -raw s3_bucket_name)
-            CF_DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+            cd ci
+            terraform init -backend-config="bucket=${TF_STATE_BUCKET}"
+            S3_BUCKET=$(terraform output -raw s3_bucket_name -var="tf_state_bucket=${TF_STATE_BUCKET}")
+            CF_DIST_ID=$(terraform output -raw cloudfront_distribution_id -var="tf_state_bucket=${TF_STATE_BUCKET}")
 
             echo "export S3_BUCKET_NAME=${S3_BUCKET}" >> $BASH_ENV
             echo "export CLOUDFRONT_ID=${CF_DIST_ID}" >> $BASH_ENV
@@ -162,7 +130,7 @@ jobs:
           name: "Deploy to S3"
           command: aws s3 sync ./gatsby-app/public s3://${S3_BUCKET_NAME} --delete
 
-      # 5. Invalidate the CloudFront cache to serve the new version
+      # 5. Invalidate the CloudFront cache
       - run:
           name: "Invalidate CloudFront Cache"
           command: aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_ID} --paths "/*"
@@ -171,7 +139,7 @@ jobs:
 
 # Workflows orchestrate the execution of jobs.
 workflows:
-  # This workflow manages your Terraform infrastructure. It will NOT run for API-triggered builds.
+  # Manages Terraform infrastructure.
   terraform-ci-cd:
     unless: << pipeline.parameters.run_gatsby_deployment >>
     jobs:
@@ -193,7 +161,7 @@ workflows:
           requires:
             - hold-for-apply
 
-  # This workflow deploys your Gatsby application via a git tag. It will NOT run for API-triggered builds.
+  # Deploys the Gatsby application via a git tag.
   deploy-portfolio-gatsby-by-tag:
     unless: << pipeline.parameters.run_gatsby_deployment >>
     jobs:
@@ -205,7 +173,7 @@ workflows:
             branches:
               ignore: /.*/
   
-  # This workflow is ONLY for triggering a Gatsby deployment via an API call (e.g., from a Strapi webhook).
+  # Triggers a Gatsby deployment via an API call (e.g., from a Strapi webhook).
   api-triggered-deployment:
     when: << pipeline.parameters.run_gatsby_deployment >>
     jobs:
