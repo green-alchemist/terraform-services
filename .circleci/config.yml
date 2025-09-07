@@ -71,7 +71,7 @@ jobs:
       - install_task
       - run:
           name: "Create Terraform plan for changed services"
-          command: task plan-changed env=staging
+          command: task print && task plan-changed env=staging
       - persist_to_workspace:
           root: .
           paths:
