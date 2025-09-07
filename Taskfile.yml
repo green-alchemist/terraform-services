@@ -28,8 +28,7 @@ vars:
   CHANGED_SERVICES:
     sh: |
       if [ -n "${CIRCLE_SHA1}" ]; then
-        # In CI: Use the specific commit SHA to find changed files.
-        git show --name-only --oneline "${CIRCLE_SHA1}" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ';
+        git diff-tree --no-commit-id --name-only -r "${CIRCLE_SHA1}" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ';
       else
         # Locally: Diff the current branch against the 'master' branch.
         git diff --name-only master... | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ';
