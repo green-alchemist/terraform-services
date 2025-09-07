@@ -128,7 +128,16 @@ tasks:
 #           terraform -chdir=./services/$service fmt -write=true; \
 #         done; \
 #         echo "Done running terraform fmt-write-all"; 
-
+  doc-root:
+    desc: "Generates the root README.md file with a dynamic list of services."
+    prompt: "This will overwrite the root README.md file. Are you sure? [y/N]"
+    cmds:
+      - task: doc-root-header
+      - for: { var: ALL_SERVICES }
+        task: doc-root-service-link
+        vars:
+          SERVICE: '{{.ITEM}}'
+      - task: doc-root-footer
 
   documentation:
     desc: "Generates READMEs for all modules and a master index."
@@ -143,6 +152,23 @@ tasks:
       - task: doc-footer
 
   # --- Helper Tasks (internal) ---
+  doc-root-header:
+    internal: true
+    cmds:
+      - |
+        echo -e "# Terraform Services Monorepo\n\nThis repository contains the Terraform configurations for managing the infrastructure of all services. It follows a monorepo pattern where each distinct piece of infrastructure (e.g., the Gatsby portfolio site, the Strapi CMS) is defined as a separate \"service.\"\n\nThe primary goal of this repository is to provide a centralized, version-controlled, and automated way to provision and manage cloud infrastructure on AWS.\n\n## Project Structure\n\nThe repository is organized into two main top-level directories:\n\n* **\`/services\`**: Contains the core Terraform code for each individual service. Each subdirectory represents a self-contained set of resources.\n* **\`/environments\`**: Contains the environment-specific configuration (\`.tfvars\` files) for each service. This is where you define the differences between environments like \`staging\` and \`production\` (e.g., instance sizes, domain names, etc.).\n\n## Available Services" > README.md
+
+  doc-root-service-link:
+    internal: true
+    cmd: 'echo -e "* [\`{{.SERVICE}}\`](./services/{{.SERVICE}}/README.md)" >> README.md'
+    requires:
+      vars: [SERVICE]
+  
+  doc-root-footer:
+    internal: true
+    cmds:
+      - |
+        echo -e "\n## Local Development\n\nThis project uses [Task](https://taskfile.dev/) as a command runner to simplify common Terraform operations. The following commands are available to be run from the root of the repository.\n\n* \`task fmt\`: Formats all Terraform code recursively.\n* \`task validate-changed\`: Validates only the services that have been changed on your current branch compared to \`master\`.\n* \`task plan-changed\`: Creates a Terraform plan for the changed services against the \`staging\` environment by default.\n* \`task apply-changed\`: Applies the plan for the changed services. **Note:** This is typically handled by the CI/CD pipeline.\n* \`task clean\`: Removes all local Terraform cache files (\`.terraform\` directories and \`.tfplans\`).\n\nTo see a full list of available commands, run \`task --list-all\`.\n\n## CI/CD Automation with CircleCI\n\nThis repository is configured with a CircleCI pipeline (\`.circleci/config.yml\`) that automates the deployment of both infrastructure and applications. The pipeline is divided into distinct workflows to handle different scenarios." >> README.md
 
   doc-header:
     internal: true
