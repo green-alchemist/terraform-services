@@ -27,11 +27,11 @@ vars:
   # Determines which services have changed. Adapts for CI vs. local environments.
   CHANGED_SERVICES:
     sh: |
-      if [ -n "${CIRCLE_SHA1}" ]; then
-        git diff-tree --no-commit-id --name-only -r "${CIRCLE_SHA1}" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ';
+      set -o pipefail
+      if [ -n "$CIRCLE_SHA1" ]; then
+        git diff-tree --no-commit-id --name-only -r "$CIRCLE_SHA1" | awk -F'/' '/^services\// {print $2}' | sort -u | while read -r service; do if [ -d "services/$service" ]; then echo "$service"; fi; done | tr '\n' ' '
       else
-        # Locally: Diff the current branch against the 'master' branch.
-        git diff --name-only master... | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ';
+        git diff --name-only master... | awk -F'/' '/^services\// {print $2}' | sort -u | while read -r service; do if [ -d "services/$service" ]; then echo "$service"; fi; done | tr '\n' ' '
       fi
     
   # Lists all available services based on the services/ directory.
