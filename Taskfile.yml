@@ -150,6 +150,7 @@ tasks:
           env: '{{.env | default "staging"}}'
 
   validate-changed:
+    deps: [clean]
     desc: "Validates changed services (default env: staging)."
     cmds:
       - for: { var: CHANGED_SERVICES }

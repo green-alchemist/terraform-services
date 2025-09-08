@@ -1,203 +1,27 @@
 version: 2.1
 
-# Pipeline Parameters allow for triggering specific workflows via the API.
-parameters:
-  run_gatsby_deployment:
-    type: boolean
-    default: false
-
-# Orbs provide pre-packaged CircleCI configuration for common tools.
+# Orbs for setting up the dynamic configuration.
 orbs:
-  node: circleci/node@5.0.2
-  aws-cli: circleci/aws-cli@3.1.1
-  terraform: circleci/terraform@3.2.0
-  discord: antonioned/discord@0.1.0
+  path-filtering: circleci/path-filtering@0.1.3
+  continuation: circleci/continuation@0.3.1
 
-# Anchors allow for reusing YAML configuration.
-anchors:
-  # Defines the CircleCI contexts that contain secrets.
-  - &context
-    context:
-      # aws-credentials is no longer needed when using OIDC
-      - circleci-secrets     # For TF_STATE_BUCKET, AWS_OIDC_ROLE_ARN
-      - slack-notifications  # For Discord webhook
-
-  # Defines a filter to run jobs only on the 'master' branch.
-  - &master_branch_filter
-    filters:
-      branches:
-        only:
-          - master
-
-  # Attaches the workspace to persist files between jobs.
-  - &attach_workspace
-    attach_workspace:
-      at: ~/project
-
-# Reusable commands for setup.
-commands:
-  install_task:
-    steps:
-      - run:
-          name: "Install Task"
-          # This command requires curl and sudo, which are available in cimg/base.
-          command: |
-            sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
-
-# Jobs define the individual steps of the CI/CD process.
-jobs:
-  # ===============================================
-  # Terraform Infrastructure Jobs
-  # ===============================================
-  terraform_validate:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - checkout
-      - aws-cli/setup:
-          role-arn: ${AWS_OIDC_ROLE_ARN}
-      - terraform/install
-      - install_task
-      - run:
-          name: "Validate changed services"
-          command: task validate-changed
-      # - discord/status:
-      #     fail_only: true
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Terraform validation failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
-
-  terraform_plan:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - checkout
-      - aws-cli/setup:
-          role-arn: ${AWS_OIDC_ROLE_ARN}
-      - terraform/install
-      - install_task
-      - run:
-          name: "Create Terraform plan for changed services"
-          command: task plan-changed env=staging
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .tfplans
-      # - discord/status:
-      #     fail_only: true
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Terraform plan failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
-
-  terraform_apply:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - *attach_workspace
-      - aws-cli/setup:
-          role-arn: ${AWS_OIDC_ROLE_ARN}
-      - terraform/install
-      - install_task
-      - run:
-          name: "Apply Terraform plan for changed services"
-          command: task apply-changed env=staging
-      # - discord/status:
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Terraform apply failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
-      #     success_message: "✅ Terraform apply succeeded for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
-
-  # ===============================================
-  # Gatsby Application Deployment Job
-  # ===============================================
-  build_and_deploy_gatsby:
-    docker:
-      - image: cimg/node:16.17-browsers
-    steps:
-      - checkout # Checks out terraform-services repo
-      - aws-cli/setup:
-          role-arn: ${AWS_OIDC_ROLE_ARN}
-      - add_ssh_keys
-      - terraform/install
-
-      # 1. Checkout the Gatsby application code
-      - run:
-          name: "Checkout Gatsby Application Code"
-          command: git clone git@github.com:green-alchemist/portfolio-gatsby.git gatsby-app
-            
-      # 2. Build the Gatsby site
-      - run:
-          name: "Install Gatsby Dependencies"
-          command: |
-            cd gatsby-app
-            npm install
-      - run:
-          name: "Build Gatsby Site"
-          command: |
-            cd gatsby-app
-            npm run build
-            
-      # 3. Fetch Outputs, Deploy to S3, and Invalidate CloudFront
-      - run:
-          name: "Deploy and Invalidate"
-          command: |
-            echo "Fetching Terraform outputs..."
-            cd ci
-            terraform init -backend-config="bucket=${TF_STATE_BUCKET}"
-            S3_BUCKET=$(terraform output -raw s3_bucket_name)
-            CF_DIST_ID=$(terraform output -raw cloudfront_distribution_id)
-            
-            echo "S3 Bucket: ${S3_BUCKET}"
-            echo "CloudFront ID: ${CF_DIST_ID}"
-
-            echo "Deploying to S3..."
-            aws s3 sync ../gatsby-app/public s3://${S3_BUCKET} --delete
-
-            echo "Invalidating CloudFront cache..."
-            aws cloudfront create-invalidation --distribution-id ${CF_DIST_ID} --paths "/*"
-
-      # - discord/status:
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Gatsby deployment failed for tag `${CIRCLE_TAG}`."
-      #     success_message: "✅ Gatsby site deployed successfully for tag `${CIRCLE_TAG}`."
-
-# Workflows orchestrate the execution of jobs.
+# This setup workflow is the only thing that runs initially.
+# Its job is to determine which pipeline to run next.
 workflows:
-  # Manages Terraform infrastructure.
-  terraform-ci-cd:
-    unless: << pipeline.parameters.run_gatsby_deployment >>
+  setup:
     jobs:
-      - terraform_validate:
-          <<: *context
-          <<: *master_branch_filter
-      - terraform_plan:
-          <<: *context
-          <<: *master_branch_filter
-          requires:
-            - terraform_validate
-      - hold-for-apply:
-          type: approval
-          requires:
-            - terraform_plan
-      - terraform_apply:
-          <<: *context
-          <<: *master_branch_filter
-          requires:
-            - hold-for-apply
-
-  # Deploys the Gatsby application via a git tag.
-  deploy-portfolio-gatsby-by-tag:
-    unless: << pipeline.parameters.run_gatsby_deployment >>
-    jobs:
-      - build_and_deploy_gatsby:
-          <<: *context
-          filters:
-            tags:
-              only: /^deploy-.*/
-            branches:
-              ignore: /.*/
-  
-  # Triggers a Gatsby deployment via an API call (e.g., from a Strapi webhook).
-  api-triggered-deployment:
-    when: << pipeline.parameters.run_gatsby_deployment >>
-    jobs:
-      - build_and_deploy_gatsby:
-          <<: *context
+      - path-filtering/filter:
+          base-revision: kyle
+          config-path: .circleci/continuation-config.yml
+          mapping: |
+            # If any .tf file in the services/ or ci/ directory changes, run the infrastructure pipeline.
+            services/.*\.tf      .circleci/pipelines/infrastructure.yml
+            ci/.*\.tf             .circleci/pipelines/infrastructure.yml
+            
+            # If any Gatsby-related files change, or if a deploy tag is pushed, run the gatsby pipeline.
+            # (We will add the gatsby repo files here later if needed)
+            services/portfolio-gatsby/.* .circleci/pipelines/gatsby.yml
+            
+            # Placeholder for Strapi.
+            # services/strapi-admin/.* .circleci/pipelines/strapi.yml
 

@@ -1,0 +1,12 @@
+# This is a helper file for the path-filtering orb.
+# It tells the continuation orb what to do with the file path determined by the filter job.
+version: 2.1
+
+orbs:
+  continuation: circleci/continuation@0.3.1
+
+workflows:
+  continuation:
+    jobs:
+      - continuation/continue:
+          configuration_path: << pipeline.parameters.config-path >>
