@@ -2,7 +2,7 @@ version: 2.1
 
 # Orbs for setting up the dynamic configuration.
 orbs:
-  path-filtering: circleci/path-filtering@1.0.0
+  path-filtering: circleci/path-filtering@2.0.4
   continuation: circleci/continuation@0.3.1
 
 # This setup workflow is the only thing that runs initially.
