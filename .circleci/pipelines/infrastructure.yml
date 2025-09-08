@@ -101,7 +101,7 @@ jobs:
 workflows:
   # Manages Terraform infrastructure.
   terraform-ci-cd:
-    unless: << pipeline.parameters.run_gatsby_deployment >>
+    # unless: << pipeline.parameters.run_gatsby_deployment >>
     jobs:
       - terraform_validate:
           <<: *context
