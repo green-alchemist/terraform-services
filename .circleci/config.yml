@@ -11,7 +11,7 @@ workflows:
   setup:
     jobs:
       - path-filtering/filter:
-          base-revision: master
+          base-revision: kyle
           config-path: .circleci/continuation-config.yml
           mapping: |
             services/.*\.tf .circleci/pipelines/infrastructure.yml
