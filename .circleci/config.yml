@@ -16,5 +16,5 @@ workflows:
           mapping: |
             services/.*\.tf ".circleci/pipelines/infrastructure.yml"
             ci/.*\.tf ".circleci/pipelines/infrastructure.yml"
-            services/portfolio-gatsby/.* ".circleci/pipelines/gatsby.yml"
+            services/portfolio-gatsby/.* ".circleci/pipelines/portfolio-gatsby.yml"
 
