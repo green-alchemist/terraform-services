@@ -14,14 +14,7 @@ workflows:
           base-revision: kyle
           config-path: .circleci/continuation-config.yml
           mapping: |
-            # If any .tf file in the services/ or ci/ directory changes, run the infrastructure pipeline.
-            services/.*\.tf      .circleci/pipelines/infrastructure.yml
-            ci/.*\.tf             .circleci/pipelines/infrastructure.yml
-            
-            # If any Gatsby-related files change, or if a deploy tag is pushed, run the gatsby pipeline.
-            # (We will add the gatsby repo files here later if needed)
+            services/.*\.tf .circleci/pipelines/infrastructure.yml
+            ci/.*\.tf .circleci/pipelines/infrastructure.yml
             services/portfolio-gatsby/.* .circleci/pipelines/gatsby.yml
-            
-            # Placeholder for Strapi.
-            # services/strapi-admin/.* .circleci/pipelines/strapi.yml
 
