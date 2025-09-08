@@ -14,7 +14,7 @@ workflows:
           base-revision: kyle
           config-path: .circleci/continuation-config.yml
           mapping: |
-            services/.*\.tf .circleci/pipelines/infrastructure.yml
-            ci/.*\.tf .circleci/pipelines/infrastructure.yml
-            services/portfolio-gatsby/.* .circleci/pipelines/gatsby.yml
+            services/.*\.tf ".circleci/pipelines/infrastructure.yml"
+            ci/.*\.tf ".circleci/pipelines/infrastructure.yml"
+            services/portfolio-gatsby/.* ".circleci/pipelines/gatsby.yml"
 
