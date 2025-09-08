@@ -1,20 +1,29 @@
 version: 2.1
 
+# This key is required to signal to CircleCI that this is a setup workflow
+# that is authorized to trigger other pipelines. It works in conjunction
+# with the "Dynamic config using setup workflows" setting in the project UI.
+setup: true
+
 # Orbs for setting up the dynamic configuration.
 orbs:
   path-filtering: circleci/path-filtering@2.0.4
   continuation: circleci/continuation@0.3.1
 
 # This setup workflow is the only thing that runs initially.
-# Its job is to determine which pipeline to run next.
+# Its job is to use the path-filtering orb to determine which pipeline to run next.
 workflows:
+  # The setup workflow itself does not have filters, it runs on every commit.
   setup:
     jobs:
       - path-filtering/filter:
-          base-revision: kyle
+          # Compare changes against the master branch.
+          base-revision: master
+          # The configuration file that defines the pipeline parameters.
           config-path: .circleci/continuation-config.yml
+          # Maps file paths (using regex) to the pipeline that should be triggered.
           mapping: |
-            services/.*\.tf ".circleci/pipelines/infrastructure.yml"
-            ci/.*\.tf ".circleci/pipelines/infrastructure.yml"
-            services/portfolio-gatsby/.* ".circleci/pipelines/portfolio-gatsby.yml"
+            services/.*\.tf .circleci/pipelines/infrastructure.yml
+            ci/.*\.tf .circleci/pipelines/infrastructure.yml
+            services/portfolio-gatsby/.* .circleci/pipelines/portfolio-gatsby.yml
 
