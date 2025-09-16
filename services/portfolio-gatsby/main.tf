@@ -34,9 +34,9 @@ module "cloudfront" {
   s3_origin_id          = module.s3_site.bucket_id
   domain_name           = var.domain_name
   # CloudFront needs aliases for all domains it will serve traffic for.
-  domain_aliases        = ["${var.subdomain}.${var.domain_name}"]
-  acm_certificate_arn   = data.aws_acm_certificate.this.arn
-  tags                  = var.tags
+  domain_aliases      = ["${var.subdomain}.${var.domain_name}"]
+  acm_certificate_arn = data.aws_acm_certificate.this.arn
+  tags                = var.tags
 }
 
 # ------------------------------------------------------------------------------
@@ -44,17 +44,17 @@ module "cloudfront" {
 # An S3 bucket configured to redirect the apex domain.
 # ------------------------------------------------------------------------------
 module "redirect_apex" {
-  source          = "git@github.com:green-alchemist/terraform-modules.git//modules/s3-redirect"
-  bucket_name     = var.domain_name
+  source                   = "git@github.com:green-alchemist/terraform-modules.git//modules/s3-redirect"
+  bucket_name              = var.domain_name
   redirect_target_hostname = "${var.subdomain}.${var.domain_name}"
-  tags            = var.tags
+  tags                     = var.tags
 }
 
 module "redirect_www" {
-  source          = "git@github.com:green-alchemist/terraform-modules.git//modules/s3-redirect"
-  bucket_name     = "www.${var.domain_name}"
+  source                   = "git@github.com:green-alchemist/terraform-modules.git//modules/s3-redirect"
+  bucket_name              = "www.${var.domain_name}"
   redirect_target_hostname = "${var.subdomain}.${var.domain_name}"
-  tags            = var.tags
+  tags                     = var.tags
 }
 
 # ------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ module "dns_records_redirects" {
   source        = "git@github.com:green-alchemist/terraform-modules.git//modules/route53-record"
   zone_id       = data.aws_route53_zone.this.zone_id
   domain_name   = var.domain_name
-  record_names  = ["@", "www"] # The apex and www records
+  record_names  = ["@", "www"]                          # The apex and www records
   alias_name    = module.redirect_apex.website_endpoint # Both point to the same redirect endpoint logic
   alias_zone_id = module.redirect_apex.hosted_zone_id
 }
