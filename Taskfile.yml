@@ -51,7 +51,7 @@ tasks:
           SERVICE: '{{.ITEM}}'
       - task: doc-root-footer
 
-  documentation:
+  docs:
     desc: "Generates READMEs for all modules and a master index."
     prompt: "This will overwrite existing README files. Are you sure? [y/N]"
     # Run the steps in a clear, sequential order

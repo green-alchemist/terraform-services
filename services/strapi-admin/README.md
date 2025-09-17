@@ -43,7 +43,6 @@
 |------|-------------|------|---------|:--------:|
 | <a name="input_aws_profile"></a> [aws\_profile](#input\_aws\_profile) | AWS Profile | `string` | `"default"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS Region | `string` | `"us-east-1"` | no |
-| <a name="input_db_password"></a> [db\_password](#input\_db\_password) | The password for the Strapi database. | `string` | n/a | yes |
 | <a name="input_environment"></a> [environment](#input\_environment) | AWS Env | `string` | `"staging"` | no |
 
 ## Outputs

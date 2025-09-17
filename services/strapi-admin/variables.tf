@@ -12,9 +12,3 @@ variable "environment" {
   description = "AWS Env"
   default     = "staging"
 }
-
-variable "db_password" {
-  description = "The password for the Strapi database."
-  type        = string
-  sensitive   = true
-}
