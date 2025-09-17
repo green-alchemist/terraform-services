@@ -19,11 +19,14 @@ module "strapi_fargate" {
   subnet_ids                  = [module.public_subnet.public_subnet_id]
   security_group_ids          = [module.strapi_security_group.security_group_id]
 
-  load_balancer {
-    target_group_arn = module.alb.target_group_arn
-    container_name   = "strapi-admin"
-    container_port   = 1337
-  }
+  # Pass the load balancer configuration as a variable
+  load_balancers = [
+    {
+      target_group_arn = module.alb.target_group_arn
+      container_name   = "strapi-admin"
+      container_port   = 1337
+    }
+  ]
 
   environment_variables = {
     DATABASE_CLIENT   = "postgres"
@@ -31,7 +34,7 @@ module "strapi_fargate" {
     DATABASE_PORT     = module.aurora_db.cluster_port
     DATABASE_NAME     = module.aurora_db.database_name
     DATABASE_USERNAME = "strapiadmin"
-    DATABASE_PASSWORD = var.db_password
+    DATABASE_PASSWORD = jsondecode(data.aws_secretsmanager_secret_version.db_password_version.secret_string)["password"]
   }
 }
 
