@@ -1,6 +1,6 @@
 ## Requirements
 
-No requirements
+No requirements.
 
 ## Providers
 
@@ -31,12 +31,11 @@ No requirements
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_acm_certificate_arn"></a> [acm\_certificate\_arn](#input\_acm\_certificate\_arn) | The ARN of the ACM certificate for the domain. Must cover the apex, www, and portfolio subdomains. | `string` | n/a | yes |
 | <a name="input_aws_profile"></a> [aws\_profile](#input\_aws\_profile) | The AWS profile name to use for authentication. | `string` | `"default"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | The AWS region to deploy resources in. | `string` | n/a | yes |
 | <a name="input_create_apex_record"></a> [create\_apex\_record](#input\_create\_apex\_record) | If true, creates records for the apex domain (@ and www). If false, creates a single record for the subdomain. | `bool` | `false` | no |
 | <a name="input_domain_name"></a> [domain\_name](#input\_domain\_name) | The apex domain name for the website (e.g., kconley.com). | `string` | n/a | yes |
-| <a name="input_subdomain"></a> [subdomain](#input\_subdomain) | The subdomain for the environment (e.g., 'portfolio-staging'). Leave empty for production. | `string` | `""` | no |
+| <a name="input_subdomain"></a> [subdomain](#input\_subdomain) | The subdomain for the main portfolio site (e.g., 'portfolio'). | `string` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | A map of tags to apply to resources. | `map(string)` | `{}` | no |
 
 ## Outputs
