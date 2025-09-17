@@ -15,8 +15,7 @@
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_alb"></a> [alb](#module\_alb) | git@github.com:green-alchemist/terraform-modules.git//modules/alb | n/a |
-| <a name="module_alb_security_group"></a> [alb\_security\_group](#module\_alb\_security\_group) | git@github.com:green-alchemist/terraform-modules.git//modules/security-group | n/a |
+| <a name="module_api_gateway"></a> [api\_gateway](#module\_api\_gateway) | git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway | n/a |
 | <a name="module_aurora_db"></a> [aurora\_db](#module\_aurora\_db) | git@github.com:green-alchemist/terraform-modules.git//modules/aurora-serverless | n/a |
 | <a name="module_aurora_security_group"></a> [aurora\_security\_group](#module\_aurora\_security\_group) | git@github.com:green-alchemist/terraform-modules.git//modules/security-group | n/a |
 | <a name="module_dns_record"></a> [dns\_record](#module\_dns\_record) | git@github.com:green-alchemist/terraform-modules.git//modules/route53-record | n/a |
@@ -28,6 +27,7 @@
 | <a name="module_strapi_fargate"></a> [strapi\_fargate](#module\_strapi\_fargate) | git@github.com:green-alchemist/terraform-modules.git//modules/fargate | n/a |
 | <a name="module_strapi_security_group"></a> [strapi\_security\_group](#module\_strapi\_security\_group) | git@github.com:green-alchemist/terraform-modules.git//modules/security-group | n/a |
 | <a name="module_vpc"></a> [vpc](#module\_vpc) | git@github.com:green-alchemist/terraform-modules.git//modules/vpc | n/a |
+| <a name="module_vpc_link_security_group"></a> [vpc\_link\_security\_group](#module\_vpc\_link\_security\_group) | git@github.com:green-alchemist/terraform-modules.git//modules/security-group | n/a |
 
 ## Resources
 

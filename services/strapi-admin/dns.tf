@@ -7,8 +7,9 @@ module "dns_record" {
 
   zone_id      = data.aws_route53_zone.this.zone_id
   domain_name  = "kconley.com"
-  record_names = ["admin-${var.environment}"] # Creates "admin-staging" etc.
+  record_names = ["admin-${var.environment}"]
 
-  alias_name    = module.alb.dns_name
-  alias_zone_id = module.alb.zone_id
+  # Point to the API Gateway's custom domain
+  alias_name    = module.api_gateway.api_endpoint # This will need to be updated to a custom domain
+  alias_zone_id = module.api_gateway.api_id       # This will need to be updated to a custom domain
 }

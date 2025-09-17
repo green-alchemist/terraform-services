@@ -18,18 +18,16 @@ module "strapi_fargate" {
   ecs_task_execution_role_arn = module.ecs_task_execution_role.role_arn
   subnet_ids                  = [module.public_subnet.public_subnet_id]
   security_group_ids          = [module.strapi_security_group.security_group_id]
+  vpc_id                      = module.vpc.vpc_id
+
+  # --- Enable Service Discovery ---
+  enable_service_discovery    = true
+  private_dns_namespace       = "internal"
+
+  # --- Enable Scale-to-Zero ---
   enable_autoscaling          = true
   min_tasks                   = 0
   max_tasks                   = 1
-
-  # Pass the load balancer configuration as a variable
-  load_balancers = [
-    {
-      target_group_arn = module.alb.target_group_arn
-      container_name   = "strapi-admin"
-      container_port   = 1337
-    }
-  ]
 
   environment_variables = {
     DATABASE_CLIENT   = "postgres"

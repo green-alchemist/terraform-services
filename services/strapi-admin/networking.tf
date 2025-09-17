@@ -19,20 +19,10 @@ module "route_table" {
   public_subnet_id    = module.public_subnet.public_subnet_id
 }
 
-# Allow public HTTP traffic to the ALB
-module "alb_security_group" {
+module "vpc_link_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
-  name   = "strapi-admin-alb-sg"
+  name   = "strapi-admin-vpc-link-sg"
   vpc_id = module.vpc.vpc_id
-  ingress_rules = [
-    {
-      from_port       = 80
-      to_port         = 80
-      protocol        = "tcp"
-      cidr_blocks     = ["0.0.0.0/0"]
-      security_groups = null
-    }
-  ]
   egress_rules = [
     {
       from_port       = 0
@@ -44,19 +34,17 @@ module "alb_security_group" {
   ]
 }
 
-# Allow traffic from the ALB to the Strapi service
 module "strapi_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
   name   = "strapi-admin-sg"
   vpc_id = module.vpc.vpc_id
   ingress_rules = [
     {
-      from_port   = 1337
-      to_port     = 1337
-      protocol    = "tcp"
-      cidr_blocks = null
-      # Only allow traffic from the ALB
-      security_groups = [module.alb_security_group.security_group_id]
+      from_port       = 1337
+      to_port         = 1337
+      protocol        = "tcp"
+      cidr_blocks     = null
+      security_groups = [module.vpc_link_security_group.security_group_id]
     }
   ]
 }
@@ -76,11 +64,15 @@ module "aurora_security_group" {
   ]
 }
 
-# Add the ALB module itself
-module "alb" {
-  source             = "git@github.com:green-alchemist/terraform-modules.git//modules/alb"
-  name               = "strapi-admin-${var.environment}-alb"
-  vpc_id             = module.vpc.vpc_id
+# This is the corrected module block
+module "api_gateway" {
+  source             = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
+  name               = "strapi-admin-${var.environment}"
   subnet_ids         = [module.public_subnet.public_subnet_id]
-  security_group_ids = [module.alb_security_group.security_group_id]
+  security_group_ids = [module.vpc_link_security_group.security_group_id]
+
+  # --- Corrected Arguments ---
+  # These are the new required inputs we were missing
+  private_dns_name = module.strapi_fargate.service_discovery_dns_name
+  container_port   = 1337
 }
