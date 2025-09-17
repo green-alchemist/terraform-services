@@ -19,10 +19,6 @@ variable "subdomain" {
   type        = string
 }
 
-variable "acm_certificate_arn" {
-  description = "The ARN of the ACM certificate for the domain. Must cover the apex, www, and portfolio subdomains."
-  type        = string
-}
 
 variable "tags" {
   description = "A map of tags to apply to resources."
