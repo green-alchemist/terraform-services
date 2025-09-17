@@ -22,6 +22,15 @@ vars:
   # Parses the JSON string into a structured list that Task can iterate over.
   PARSED_PAIRS:
     ref: fromJson .SERVICE_ENV_PAIRS
+  
+  CURRENT_BRANCH:
+    sh: git rev-parse --abbrev-ref HEAD
+
+  LOCAL_CHANGES:
+    sh: git diff --name-only HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
+  UNPUSHED_COMMITS:
+    sh: git diff --name-only origin/{{.CURRENT_BRANCH}}...HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
+
 
 
   # Determines which services have changed. Adapts for CI vs. local environments.
@@ -119,11 +128,36 @@ tasks:
       - |
         echo "All Services: {{.ALL_SERVICES}}"
         echo "Chnaged Services: {{.CHANGED_SERVICES}}"
+        echo "Local Chanegs: {{.LOCAL_CHANGES}}"
+        echo "Unpushued Changes: {{.UNPUSHED_COMMITS}}"
         echo "Service env pairs: {{.SERVICE_ENV_PAIRS}}"
         echo "Parsed Pairs: {{.PARSED_PAIRS}}"
         
 
 # --- CI/CD TASKS (for changed services) ---
+  plan-local:
+    desc: "Creates a Terraform plan for services with uncommitted local changes."
+    preconditions:
+      - sh: '[ -n "{{.LOCAL_CHANGES}}" ]'
+        msg: "✅ No uncommitted local changes detected in any services."
+    cmds:
+      - for: { var: LOCAL_CHANGES }
+        task: plan-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+
+  plan-unpushed:
+    desc: "Creates a Terraform plan for services with committed but unpushed changes."
+    preconditions:
+      - sh: '[ -n "{{.UNPUSHED_COMMITS}}" ]'
+        msg: "✅ No unpushed commits detected in any services."
+    cmds:
+      - for: { var: UNPUSHED_COMMITS }
+        task: plan-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
 
   plan-changed:
     desc: "Creates a Terraform plan for services that have changed since 'main'."
