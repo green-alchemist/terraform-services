@@ -29,3 +29,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "subdomain" {
+  description = "The subdomain for the environment (e.g., 'portfolio-staging'). Leave empty for production."
+  type        = string
+  default     = ""
+}
+
+variable "create_apex_record" {
+  description = "If true, creates records for the apex domain (@ and www). If false, creates a single record for the subdomain."
+  type        = bool
+  default     = false
+}
