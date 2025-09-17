@@ -9,7 +9,7 @@ provider "aws" {
 }
 
 module "s3_site" {
-  source      = "git@github.com:green-alchemist/terraform-modules.git//modules/s3-static-site"
+  source = "git@github.com:green-alchemist/terraform-modules.git//modules/s3-static-site"
   # The bucket name is now the full hostname we want to serve
   bucket_name = local.hostname
   tags        = var.tags
@@ -21,11 +21,11 @@ module "cloudfront_static_site" {
   s3_origin_id          = module.s3_site.bucket_id
   domain_name           = local.hostname
   domain_aliases        = var.create_apex_record ? ["www.${var.domain_name}"] : []
-  
+
   # Use the ARN from the data source instead of a variable
-  acm_certificate_arn   = data.aws_acm_certificate.this.arn 
-  
-  tags                  = var.tags
+  acm_certificate_arn = data.aws_acm_certificate.this.arn
+
+  tags = var.tags
 }
 
 
