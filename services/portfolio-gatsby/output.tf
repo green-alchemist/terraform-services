@@ -5,7 +5,7 @@ output "s3_bucket_name" {
 
 output "cloudfront_distribution_id" {
   description = "The ID of the CloudFront distribution for cache invalidation."
-  value       = module.cloudfront.id
+  value       = module.cloudfront_static_site.id
 }
 
 output "site_url" {
