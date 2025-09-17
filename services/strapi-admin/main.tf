@@ -1,7 +1,7 @@
-provider "circleci" {
-  api_token    = locals.envs["CIRCLECI_CLI_TOKEN"]
-  organization = locals.envs["CIRCLECI_ORGANIZATION"]
-}
+# provider "circleci" {
+#   api_token    = locals.envs["CIRCLECI_CLI_TOKEN"]
+#   organization = locals.envs["CIRCLECI_ORGANIZATION"]
+# }
 
 provider "aws" {
   profile = var.aws_profile
@@ -14,10 +14,16 @@ module "strapi_fargate" {
   task_family                 = "strapi-admin-task"
   service_name                = "strapi-admin-service"
   container_name              = "strapi-admin"
-  ecr_repository_url          = module.strapi_ecrs.urls["strapi-admin-dev"]
+  ecr_repository_url          = module.strapi_ecrs.urls["strapi-admin-${var.environment}"]
   ecs_task_execution_role_arn = module.ecs_task_execution_role.role_arn
   subnet_ids                  = [module.public_subnet.public_subnet_id]
   security_group_ids          = [module.strapi_security_group.security_group_id]
+
+  load_balancer {
+    target_group_arn = module.alb.target_group_arn
+    container_name   = "strapi-admin"
+    container_port   = 1337
+  }
 
   environment_variables = {
     DATABASE_CLIENT   = "postgres"
@@ -27,4 +33,9 @@ module "strapi_fargate" {
     DATABASE_USERNAME = "strapiadmin"
     DATABASE_PASSWORD = var.db_password
   }
+}
+
+output "admin_url" {
+  description = "The URL of the Strapi admin panel."
+  value       = "http://admin-${var.environment}.kconley.com"
 }

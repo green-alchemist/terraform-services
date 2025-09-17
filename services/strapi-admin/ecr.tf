@@ -1,22 +1,21 @@
 module "strapi_ecrs" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/ecr"
+
   ecrs = {
-    strapi-admin-dev = {
-      tags = { Service = "strapi-admin-dev", Env = "dev" }
-    },
-    strapi-admin-prod = {
-      tags = { Service = "strapi-admin-prod", Env = "prod" }
+    "strapi-admin-${var.environment}" = {
+      tags = {
+        Service     = "strapi-admin"
+        Environment = var.environment
+      }
     }
   }
+
   tags = {
     Terraform = "true"
   }
-
 }
 
 output "ecr_registries" {
-  value = flatten([
-    module.strapi_ecrs.names
-  ])
+  value       = module.strapi_ecrs.names
   description = "ECR repositories created."
 }
