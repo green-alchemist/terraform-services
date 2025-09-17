@@ -18,6 +18,9 @@ module "strapi_fargate" {
   ecs_task_execution_role_arn = module.ecs_task_execution_role.role_arn
   subnet_ids                  = [module.public_subnet.public_subnet_id]
   security_group_ids          = [module.strapi_security_group.security_group_id]
+  enable_autoscaling          = true
+  min_tasks                   = 0
+  max_tasks                   = 1
 
   # Pass the load balancer configuration as a variable
   load_balancers = [
