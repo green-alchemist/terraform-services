@@ -34,7 +34,7 @@ module "strapi_fargate" {
     DATABASE_PORT     = module.aurora_db.cluster_port
     DATABASE_NAME     = module.aurora_db.database_name
     DATABASE_USERNAME = "strapiadmin"
-    DATABASE_PASSWORD = jsondecode(data.aws_secretsmanager_secret_version.db_password_version.secret_string)["password"]
+    DATABASE_PASSWORD = jsondecode(data.aws_secretsmanager_secret_version.db_password_version.secret_string)["db_password"]
   }
 }
 
