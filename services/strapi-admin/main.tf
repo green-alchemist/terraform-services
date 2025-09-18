@@ -21,13 +21,13 @@ module "strapi_fargate" {
   vpc_id                      = module.vpc.vpc_id
 
   # --- Enable Service Discovery ---
-  enable_service_discovery    = true
-  private_dns_namespace       = "internal"
+  enable_service_discovery = true
+  private_dns_namespace    = "internal"
 
   # --- Enable Scale-to-Zero ---
-  enable_autoscaling          = true
-  min_tasks                   = 0
-  max_tasks                   = 1
+  enable_autoscaling = true
+  min_tasks          = 0
+  max_tasks          = 1
 
   environment_variables = {
     DATABASE_CLIENT   = "postgres"

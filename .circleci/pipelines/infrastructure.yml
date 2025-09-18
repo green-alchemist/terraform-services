@@ -3,7 +3,7 @@ version: 2.1
 orbs:
   node: circleci/node@5.0.2
   aws-cli: circleci/aws-cli@3.1.1
-  terraform: circleci/terraform@3.2.0
+  terraform: circleci/terraform@3.7.0
   discord: antonioned/discord@0.1.0
 
 # Anchors allow for reusing YAML configuration.
@@ -26,6 +26,31 @@ anchors:
   - &attach_workspace
     attach_workspace:
       at: ~/project
+  
+  - &setup_terraform_cache
+    steps:
+      # Restore provider cache from previous runs
+      - restore_cache:
+          keys:
+            - terraform-providers-v2-{{ checksum "cache_checksum.txt" }}
+            - terraform-providers-v2-
+
+      # Ensure the cache directory always exists
+      - run:
+          name: "Ensure plugin cache directory exists"
+          command: mkdir -p /home/circleci/.terraform.d/plugin-cache
+
+      # Create a stable checksum from all lock files
+      - run:
+          name: "Generate Cache Key"
+          command: find services -name ".terraform.lock.hcl" -print0 | sort -z | xargs -0 sha256sum > cache_checksum.txt
+
+  - &save_tf_cache
+    steps:
+      - save_cache:
+          key: terraform-providers-v2-{{ checksum "cache_checksum.txt" }}
+          paths:
+            - "/home/circleci/.terraform.d/plugin-cache"
 
 # Reusable commands for setup.
 commands:
@@ -45,8 +70,11 @@ jobs:
   terraform_validate:
     docker:
       - image: cimg/base:stable
+    environment:
+      TF_PLUGIN_CACHE_DIR: "/home/circleci/.terraform.d/plugin-cache"
     steps:
       - checkout
+      - *setup_terraform_cache
       - aws-cli/setup:
           role-arn: ${AWS_OIDC_ROLE_ARN}
       - terraform/install
@@ -54,6 +82,7 @@ jobs:
       - run:
           name: "Validate changed services"
           command: task validate-changed
+      - *save_tf_cache
       # - discord/status:
       #     fail_only: true
       #     webhook: "${DISCORD_STATUS_WEBHOOK}"
@@ -62,8 +91,11 @@ jobs:
   terraform_plan:
     docker:
       - image: cimg/base:stable
+    environment:
+      TF_PLUGIN_CACHE_DIR: "/home/circleci/.terraform.d/plugin-cache"
     steps:
       - checkout
+      - *setup_terraform_cache
       - aws-cli/setup:
           role-arn: ${AWS_OIDC_ROLE_ARN}
       - terraform/install
@@ -75,6 +107,7 @@ jobs:
           root: .
           paths:
             - .tfplans
+      - *save_tf_cache
       # - discord/status:
       #     fail_only: true
       #     webhook: "${DISCORD_STATUS_WEBHOOK}"
@@ -85,6 +118,7 @@ jobs:
       - image: cimg/base:stable
     steps:
       - *attach_workspace
+      - *setup_terraform_cache
       - aws-cli/setup:
           role-arn: ${AWS_OIDC_ROLE_ARN}
       - terraform/install

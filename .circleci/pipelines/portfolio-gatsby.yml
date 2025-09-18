@@ -9,7 +9,7 @@ parameters:
 orbs:
   node: circleci/node@5.0.2
   aws-cli: circleci/aws-cli@3.1.1
-  terraform: circleci/terraform@3.2.0
+  terraform: circleci/terraform@3.7.0
   discord: antonioned/discord@0.1.0
 
 anchors:

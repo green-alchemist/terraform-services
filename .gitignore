@@ -1,6 +1,8 @@
-.terraform*
+.terraform/
 *.tfstate*
 
 .env
 .DS_Store
 *.tfplan
+
+cache_checksum.txt

@@ -1,7 +1,6 @@
 version: 3
 
 vars:
-
   SERVICE_ENV_PAIRS:
     sh: |
       set -e
@@ -22,14 +21,14 @@ vars:
   # Parses the JSON string into a structured list that Task can iterate over.
   PARSED_PAIRS:
     ref: fromJson .SERVICE_ENV_PAIRS
-  
   CURRENT_BRANCH:
     sh: git rev-parse --abbrev-ref HEAD
-
   LOCAL_CHANGES:
     sh: git diff --name-only HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
   UNPUSHED_COMMITS:
     sh: git diff --name-only origin/{{.CURRENT_BRANCH}}...HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
+  IS_CI:
+    sh: 'test -n "$CIRCLECI" && echo "true" || echo "false"'
 
 
 
@@ -45,7 +44,7 @@ vars:
     
   # Lists all available services based on the services/ directory.
   ALL_SERVICES:
-    sh: find services -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | tr '\n' ' '
+    sh: find services -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | LC_ALL=C sort | tr '\n' ' '
 
 
 tasks:
@@ -236,6 +235,11 @@ tasks:
     desc: Remove terraform build files
     cmds:
       - find . -name .terraform | xargs rm -rf;
+  
+  clean-lock:
+    desc: Remove terraform lock files
+    cmds:
+      - find . -type f -name ".terraform.lock.hcl" -delete
 
   fmt:
     desc: "Formats all Terraform files recursively"
