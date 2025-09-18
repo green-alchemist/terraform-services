@@ -1,40 +1,46 @@
 version: 2.1
 
 orbs:
-  # The continuation orb is required for this dynamic workflow
-  continuation: circleci/continuation@0.3.1
+  # The 'monorepo-orb' name is an alias we defined in the main config.yml.
+  monorepo: monorepo-orb/orb@dev:alpha
+  aws-cli: circleci/aws-cli@3.1.1
+  terraform: circleci/terraform@3.7.0
 
-# This job will run first to check for changes.
-jobs:
-  check_for_changes:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - checkout
-      - run:
-          name: "Check for changed services and decide to continue"
-          command: |
-            # This script determines if any Terraform services have changed.
-            CHANGED_SERVICES=$(git diff-tree --no-commit-id --name-only -r "$CIRCLE_SHA1" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ')
-            
-            if [ -n "$CHANGED_SERVICES" ]; then
-              echo "Changes detected in services: $CHANGED_SERVICES"
-              # If changes are found, trigger the second stage of the pipeline
-              # by passing a parameter to the continue_config.yml file.
-              continuation/continue:
-                configuration_path: .circleci/pipelines/infrastructure-plan.yml
-                parameters: '{ "run_tf_workflow": true }'
-            else
-              echo "No changes detected in any services. Stopping pipeline."
-            fi
+anchors:
+  - &context
+    context:
+      - circleci-secrets
+      - slack-notifications
+  - &branch_filter
+    filters:
+      branches:
+        only:
+          - kyle
 
-# This is the initial workflow that will always run.
 workflows:
-  check_workflow:
+  # This workflow only runs if it was triggered by the top-level path-filtering job.
+  terraform-ci-cd:
     jobs:
-      - check_for_changes:
-          context: circleci-secrets # Add context for environment variables if needed
-          filters:
-            branches:
-              only:
-                - kyle
+      - monorepo/terraform_ci_job:
+          name: terraform_validate
+          mode: validate
+          <<: *context
+          <<: *branch_filter
+      - monorepo/terraform_ci_job:
+          name: terraform_plan
+          mode: plan
+          <<: *context
+          <<: *branch_filter
+          requires:
+            - terraform_validate
+      - hold-for-apply:
+          type: approval
+          requires:
+            - terraform_plan
+      - monorepo/terraform_ci_job:
+          name: terraform_apply
+          mode: apply
+          <<: *context
+          <<: *branch_filter
+          requires:
+            - hold-for-apply
