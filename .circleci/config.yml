@@ -17,5 +17,5 @@ workflows:
             services/.*\.tf .circleci/pipelines/infrastructure.yml
             environments/.*\.tf .circleci/pipelines/infrastructure.yml
             ci/.*\.tf .circleci/pipelines/infrastructure.yml
-            . .circleci/pipelines/default.yml
+            .* .circleci/pipelines/default.yml
 
