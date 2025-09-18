@@ -21,7 +21,7 @@ workflows:
   # This workflow only runs if it was triggered by the top-level path-filtering job.
   terraform-ci-cd:
     jobs:
-      - monorepo/terraform_ci_job:
+      - monorepo/orb/terraform_ci_job:
           name: terraform_validate
           mode: validate
           <<: *context
