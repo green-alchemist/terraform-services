@@ -1,8 +1,5 @@
 version: 2.1
 
-# This line enables the two-stage dynamic pipeline feature.
-setup: true
-
 orbs:
   # The continuation orb is required for this dynamic workflow
   continuation: circleci/continuation@0.3.1
