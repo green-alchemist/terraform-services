@@ -31,13 +31,13 @@ anchors:
 commands:
   setup_terraform_cache:
     steps:
+      - run:
+          name: "Ensure plugin cache directory exists"
+          command: mkdir -p /home/circleci/.terraform.d/plugin-cache
       - restore_cache:
           keys:
             - terraform-providers-v2-{{ checksum "cache_checksum.txt" }}
             - terraform-providers-v2-
-      - run:
-          name: "Ensure plugin cache directory exists"
-          command: mkdir -p /home/circleci/.terraform.d/plugin-cache
       - run:
           name: "Generate Cache Key"
           command: find services -name ".terraform.lock.hcl" -print0 | sort -z | xargs -0 sha256sum > cache_checksum.txt
