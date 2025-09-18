@@ -158,6 +158,16 @@ tasks:
           service: '{{.ITEM}}'
           env: '{{.env | default "staging"}}'
 
+  validate-changed:
+    deps: [clean]
+    desc: "Validates changed services (default env: staging)."
+    cmds:
+      - for: { var: CHANGED_SERVICES }
+        task: validate-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+
   plan-changed:
     desc: "Creates a Terraform plan for services that have changed since 'main'."
     # preconditions:
@@ -172,9 +182,9 @@ tasks:
 
   apply-changed:
     desc: "Applies the Terraform plan for changed services."
-    preconditions:
-      - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
-        msg: "✅ No changed services detected. Nothing to apply."
+    # preconditions:
+    #   - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
+    #     msg: "✅ No changed services detected. Nothing to apply."
     cmds:
       - for: { var: CHANGED_SERVICES }
         task: apply-service
@@ -182,15 +192,6 @@ tasks:
           service: '{{.ITEM}}'
           env: '{{.env | default "staging"}}'
 
-  validate-changed:
-    deps: [clean]
-    desc: "Validates changed services (default env: staging)."
-    cmds:
-      - for: { var: CHANGED_SERVICES }
-        task: validate-service
-        vars:
-          service: '{{.ITEM}}'
-          env: '{{.env | default "staging"}}'
 
 
   # --- MANUAL TASKS (for all services) ---
