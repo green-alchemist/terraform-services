@@ -6,8 +6,7 @@ setup: true
 orbs:
   path-filtering: circleci/path-filtering@2.0.4
   # 2. Define the 'monorepo-orb' alias and point it to your local orb file.
-  monorepo-orb:
-    orb: ../.circleci/orbs/orb.yml
+  monorepo: .circleci/orb/orb.yml
 
 workflows:
   setup:
