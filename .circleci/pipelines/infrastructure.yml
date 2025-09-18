@@ -72,7 +72,7 @@ commands:
             fi
 
 jobs:
-  check_for_changes:
+  change_check:
     docker:
       - image: cimg/base:stable
     steps:
@@ -148,9 +148,10 @@ jobs:
 workflows:
   check_workflow:
     jobs:
-      - check_for_changes:
+      - change_check:
           <<: *context
           <<: *master_branch_filter
+
   terraform-ci-cd:
     when: << pipeline.parameters.run_tf_workflow >> 
     jobs:
