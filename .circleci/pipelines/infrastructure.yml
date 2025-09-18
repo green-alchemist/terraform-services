@@ -61,13 +61,23 @@ commands:
           command: |
             CHANGED_SERVICES=$(git diff-tree --no-commit-id --name-only -r "$CIRCLE_SHA1" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ')
             if [ -z "$CHANGED_SERVICES" ]; then
-              echo "No changes detected in any services. Halting job."
-              circleci-agent step halt
+              echo "No changes detected in any services. Stopping."
+              # If no changes, we do nothing. The pipeline stops.
             else
-              echo "Changes detected in services: $CHANGED_SERVICES"
+              echo "Changes detected. Continuing to Terraform workflow."
+              # If changes are found, we set the pipeline parameter to true
+              continuation/continue:
+                configuration_path: .circleci/continue_config.yml
+                parameters: '{ "run_tf_workflow": true }'
             fi
 
 jobs:
+  check_for_changes:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - check_for_changes
   terraform_validate:
     docker:
       - image: cimg/base:stable
@@ -136,8 +146,13 @@ jobs:
       #     success_message: "✅ Terraform apply succeeded for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
 
 workflows:
+  check_workflow:
+    jobs:
+      - check_for_changes:
+          <<: *context
+          <<: *master_branch_filter
   terraform-ci-cd:
-    # unless: << pipeline.parameters.run_gatsby_deployment >>
+    when: << pipeline.parameters.run_tf_workflow >> 
     jobs:
       - terraform_validate:
           <<: *context
