@@ -22,7 +22,7 @@ jobs:
               # If changes are found, trigger the second stage of the pipeline
               # by passing a parameter to the continue_config.yml file.
               continuation/continue:
-                configuration_path: .circleci/continue_config.yml
+                configuration_path: .circleci/pipelines/infrastructure-plan.yml
                 parameters: '{ "run_tf_workflow": true }'
             else
               echo "No changes detected in any services. Stopping pipeline."
