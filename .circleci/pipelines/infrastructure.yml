@@ -60,21 +60,24 @@ commands:
   check_for_changes:
     steps:
       - run:
-          name: "Check for changed services"
+          name: "Check for changed services and create sentinel file"
           command: |
+            # 1. Create the workspace directory unconditionally
+            mkdir -p ~/project
+
             CHANGED_SERVICES=$(git diff-tree --no-commit-id --name-only -r "$CIRCLE_SHA1" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ')
             if [ -n "$CHANGED_SERVICES" ]; then
               echo "Changes detected in services: $CHANGED_SERVICES"
-              # Create the sentinel file
-              mkdir -p ~/project
+              # Create the sentinel file inside the workspace directory
               touch ~/project/changes_detected.txt
             else
               echo "No changes detected. Workflow will not proceed."
             fi
+      # 2. Persist the entire workspace directory. This will succeed even if it's empty.
       - persist_to_workspace:
           root: ~/project
           paths:
-            - changes_detected.txt
+            - "."
 
 jobs:
   change_check:
