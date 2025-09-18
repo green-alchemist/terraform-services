@@ -24,7 +24,7 @@ vars:
   CURRENT_BRANCH:
     sh: git rev-parse --abbrev-ref HEAD
   LOCAL_CHANGES:
-    sh: git diff --name-only HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
+    sh: git diff --name-only HEAD | awk -F'/' '/^services\// {print $2}' | LC_ALL=C sort -u | tr '\n' ' '
   UNPUSHED_COMMITS:
     sh: git diff --name-only origin/{{.CURRENT_BRANCH}}...HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
   IS_CI:
@@ -50,8 +50,8 @@ vars:
 tasks:
   doc-root:
     desc: "Generates the root README.md file with a dynamic list of services."
-    prompt: "This will overwrite the root README.md file. Are you sure? [y/N]"
     cmds:
+      - task: _prompt-confirm
       - task: doc-root-header
       - for: { var: ALL_SERVICES }
         task: doc-root-service-link
@@ -61,9 +61,8 @@ tasks:
 
   docs:
     desc: "Generates READMEs for all modules and a master index."
-    prompt: "This will overwrite existing README files. Are you sure? [y/N]"
-    # Run the steps in a clear, sequential order
     cmds:
+      - task: _prompt-confirm
       - task: doc-header
       - for: { var: ALL_SERVICES }
         task: doc-module
@@ -115,7 +114,6 @@ tasks:
       - echo "## [Back](../README.md)" >> ./services/README.md
   
 # End documentation functions
-
 
   default:
     cmds:
@@ -272,6 +270,19 @@ tasks:
 
 
   # --- HELPER TASKS (internal) ---
+  _prompt-confirm:
+    internal: true
+    cmds:
+      - |
+        if test {{.IS_CI}} = false; then
+          printf "This will overwrite existing README files. Are you sure? [y/N] "
+          read -r answer
+          if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
+            echo "Aborted."
+            exit 1
+          fi
+        fi
+        
   init-service:
     internal: true
     cmds:
