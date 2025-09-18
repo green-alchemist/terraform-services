@@ -71,7 +71,7 @@ commands:
               echo "Changes detected. Continuing to Terraform workflow."
               # If changes are found, we set the pipeline parameter to true
               continuation/continue:
-                configuration_path: .circleci/continue_config.yml
+                configuration_path: .circleci/continustion-onfig.yml
                 parameters: '{ "run_tf_workflow": true }'
             fi
 
