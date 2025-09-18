@@ -10,7 +10,7 @@ workflows:
   setup:
     jobs:
       - path-filtering/filter:
-          base-revision: kyle
+          base-revision: master
           # 3. This config path now points to a much simpler helper file.
           config-path: .circleci/continuation-config.yml
           mapping: |
