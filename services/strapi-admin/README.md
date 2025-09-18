@@ -15,16 +15,12 @@
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_api_gateway"></a> [api\_gateway](#module\_api\_gateway) | git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway | n/a |
-| <a name="module_aurora_db"></a> [aurora\_db](#module\_aurora\_db) | git@github.com:green-alchemist/terraform-modules.git//modules/aurora-serverless | n/a |
 | <a name="module_aurora_security_group"></a> [aurora\_security\_group](#module\_aurora\_security\_group) | git@github.com:green-alchemist/terraform-modules.git//modules/security-group | n/a |
-| <a name="module_dns_record"></a> [dns\_record](#module\_dns\_record) | git@github.com:green-alchemist/terraform-modules.git//modules/route53-record | n/a |
 | <a name="module_ecs_task_execution_role"></a> [ecs\_task\_execution\_role](#module\_ecs\_task\_execution\_role) | git@github.com:green-alchemist/terraform-modules.git//modules/ecs-task-execution-role | n/a |
 | <a name="module_internet_gateway"></a> [internet\_gateway](#module\_internet\_gateway) | git@github.com:green-alchemist/terraform-modules.git//modules/internet-gateway | n/a |
 | <a name="module_public_subnet"></a> [public\_subnet](#module\_public\_subnet) | git@github.com:green-alchemist/terraform-modules.git//modules/public-subnet | n/a |
 | <a name="module_route_table"></a> [route\_table](#module\_route\_table) | git@github.com:green-alchemist/terraform-modules.git//modules/route-table | n/a |
 | <a name="module_strapi_ecrs"></a> [strapi\_ecrs](#module\_strapi\_ecrs) | git@github.com:green-alchemist/terraform-modules.git//modules/ecr | n/a |
-| <a name="module_strapi_fargate"></a> [strapi\_fargate](#module\_strapi\_fargate) | git@github.com:green-alchemist/terraform-modules.git//modules/fargate | n/a |
 | <a name="module_strapi_security_group"></a> [strapi\_security\_group](#module\_strapi\_security\_group) | git@github.com:green-alchemist/terraform-modules.git//modules/security-group | n/a |
 | <a name="module_vpc"></a> [vpc](#module\_vpc) | git@github.com:green-alchemist/terraform-modules.git//modules/vpc | n/a |
 | <a name="module_vpc_link_security_group"></a> [vpc\_link\_security\_group](#module\_vpc\_link\_security\_group) | git@github.com:green-alchemist/terraform-modules.git//modules/security-group | n/a |
@@ -34,8 +30,7 @@
 | Name | Type |
 |------|------|
 | [aws_route53_zone.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) | data source |
-| [aws_secretsmanager_secret.db_password_secret](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/secretsmanager_secret) | data source |
-| [aws_secretsmanager_secret_version.db_password_version](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/secretsmanager_secret_version) | data source |
+| [aws_ssm_parameter.db_password](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameter) | data source |
 
 ## Inputs
 
