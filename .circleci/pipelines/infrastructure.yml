@@ -1,191 +1,56 @@
+# This is the primary configuration file. It runs on every commit.
+# Its only job is to check for changes and decide whether to continue to the main workflow.
 version: 2.1
+
+# 1. Enable Dynamic Configuration and define the pipeline parameter
 parameters:
   run_tf_workflow:
     type: boolean
     default: false
+
 orbs:
-  node: circleci/node@5.0.2
-  aws-cli: circleci/aws-cli@3.1.1
-  terraform: circleci/terraform@3.7.0
-  discord: antonioned/discord@0.1.0
+  # The continuation orb is required for this dynamic workflow
+  continuation: circleci/continuation@0.3.1
 
-# Anchors allow for reusing YAML configuration.
-anchors:
-  # Defines the CircleCI contexts that contain secrets.
-  - &context
-    context:
-      # aws-credentials is no longer needed when using OIDC
-      - circleci-secrets     # For TF_STATE_BUCKET, AWS_OIDC_ROLE_ARN
-      - slack-notifications  # For Discord webhook
-
-  # Defines a filter to run jobs only on the 'master' branch.
-  - &master_branch_filter
-    filters:
-      branches:
-        only:
-          - kyle
-
-  # Attaches the workspace to persist files between jobs.
-  - &attach_workspace
-    attach_workspace:
-      at: ~/project
-
-# Reusable commands for setup.
-commands:
-  setup_terraform_cache:
-    steps:
-      - run:
-          name: "Ensure plugin cache directory exists"
-          command: mkdir -p /home/circleci/.terraform.d/plugin-cache
-      - restore_cache:
-          keys:
-            - terraform-providers-v2-{{ checksum "cache_checksum.txt" }}
-            - terraform-providers-v2-
-      - run:
-          name: "Generate Cache Key"
-          command: find services -name ".terraform.lock.hcl" -print0 | sort -z | xargs -0 sha256sum > cache_checksum.txt
-  save_tf_cache:
-    steps:
-      - save_cache:
-          key: terraform-providers-v2-{{ checksum "cache_checksum.txt" }}
-          paths:
-            - "/home/circleci/.terraform.d/plugin-cache"
-  install_task:
-    steps:
-      - run:
-          name: "Install Task"
-          # This command requires curl and sudo, which are available in cimg/base.
-          command: |
-            sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+# This job will run first to check for changes.
+jobs:
   check_for_changes:
+    docker:
+      - image: cimg/base:stable
     steps:
+      - checkout
+      # Step 1: Check for changes and create a sentinel file if they exist.
       - run:
-          name: "Check for changed services and create sentinel file"
+          name: "Check for changed services"
           command: |
-            # 1. Create the workspace directory unconditionally
-            mkdir -p ~/project
-
             CHANGED_SERVICES=$(git diff-tree --no-commit-id --name-only -r "$CIRCLE_SHA1" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ')
             if [ -n "$CHANGED_SERVICES" ]; then
               echo "Changes detected in services: $CHANGED_SERVICES"
-              # Create the sentinel file inside the workspace directory
-              touch ~/project/changes_detected.txt
+              echo "Marking pipeline for continuation."
+              # Create a simple file to act as a signal
+              mkdir -p /tmp/workspace
+              touch /tmp/workspace/changes_detected
             else
-              echo "No changes detected. Workflow will not proceed."
+              echo "No changes detected in any services. Stopping pipeline."
             fi
-      # 2. Persist the entire workspace directory. This will succeed even if it's empty.
-      - persist_to_workspace:
-          root: ~/project
-          paths:
-            - "."
-
-jobs:
-  change_check:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - checkout
-      - check_for_changes
-  terraform_validate:
-    docker:
-      - image: cimg/base:stable
-    environment:
-      TF_PLUGIN_CACHE_DIR: "/home/circleci/.terraform.d/plugin-cache"
-    steps:
-      - checkout
-      - *attach_workspace
+      # Step 2: This step is conditional and only runs if the sentinel file exists.
       - when:
           condition:
             file.exists:
-              path: "changes_detected.txt"
+              path: /tmp/workspace/changes_detected
           steps:
-            - setup_terraform_cache
-            - aws-cli/setup:
-                role-arn: ${AWS_OIDC_ROLE_ARN}
-            - terraform/install
-            - install_task
-            - run:
-                name: "Validate changed services"
-                command: task validate-changed
-            - save_tf_cache
-      # - discord/status:
-      #     fail_only: true
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Terraform validation failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
+            # Trigger the second stage of the pipeline using the infrastructure-plan.yml file
+            - continuation/continue:
+                configuration_path: .circleci/pipelines/infrastructure-plan.yml
+                parameters: '{ "run_tf_workflow": true }'
 
-  terraform_plan:
-    docker:
-      - image: cimg/base:stable
-    environment:
-      TF_PLUGIN_CACHE_DIR: "/home/circleci/.terraform.d/plugin-cache"
-    steps:
-      - checkout
-      - *attach_workspace
-      - when:
-          condition:
-            file.exists:
-              path: "changes_detected.txt"
-          steps:
-            - setup_terraform_cache
-            - aws-cli/setup:
-                role-arn: ${AWS_OIDC_ROLE_ARN}
-            - terraform/install
-            - install_task
-            - run:
-                name: "Create Terraform plan for changed services"
-                command: task plan-changed env=staging
-            - persist_to_workspace:
-                root: .
-                paths:
-                  - .tfplans
-            - save_tf_cache
-      # - discord/status:
-      #     fail_only: true
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Terraform plan failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
-
-  terraform_apply:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - *attach_workspace
-      - setup_terraform_cache
-      - aws-cli/setup:
-          role-arn: ${AWS_OIDC_ROLE_ARN}
-      - terraform/install
-      - install_task
-      - run:
-          name: "Apply Terraform plan for changed services"
-          command: task apply-changed env=staging
-      - save_tf_cache
-      # - discord/status:
-      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
-      #     failure_message: "🚨 Terraform apply failed for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
-      #     success_message: "✅ Terraform apply succeeded for commit `${CIRCLE_SHA1:0:7}` by `${CIRCLE_USERNAME}`."
-
+# This is the initial workflow that will always run.
 workflows:
-  terraform-ci-cd:
-    # when: << pipeline.parameters.run_tf_workflow >> 
+  check_workflow:
     jobs:
-      - change_check:
-          <<: *context
-          <<: *master_branch_filter
-      - terraform_validate:
-          <<: *context
-          <<: *master_branch_filter
-          requires:
-            - change_check
-      - terraform_plan:
-          <<: *context
-          <<: *master_branch_filter
-          requires:
-            - terraform_validate
-      - hold-for-apply:
-          type: approval
-          requires:
-            - terraform_plan
-      - terraform_apply:
-          <<: *context
-          <<: *master_branch_filter
-          requires:
-            - hold-for-apply
+      - check_for_changes:
+          context: circleci-secrets
+          filters:
+            branches:
+              only:
+                - kyle
