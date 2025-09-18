@@ -5,12 +5,12 @@ setup: true
 
 orbs:
   path-filtering: circleci/path-filtering@2.0.4
-
-- &branch_filter
-    filters:
-      branches:
-        only:
-          - master
+anchors:
+  - &branch_filter
+      filters:
+        branches:
+          only:
+            - master
 
 workflows:
   setup:
