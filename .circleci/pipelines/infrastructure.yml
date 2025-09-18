@@ -117,7 +117,7 @@ jobs:
       TF_PLUGIN_CACHE_DIR: "/home/circleci/.terraform.d/plugin-cache"
     steps:
       - checkout
-       - *attach_workspace
+      - *attach_workspace
       - when:
           condition:
             file.exists:
