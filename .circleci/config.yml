@@ -15,6 +15,7 @@ workflows:
           config-path: .circleci/continuation-config.yml
           mapping: |
             services/.*\.tf .circleci/pipelines/infrastructure.yml
+            environments/.*\.tf .circleci/pipelines/infrastructure.yml
             ci/.*\.tf .circleci/pipelines/infrastructure.yml
-            services/portfolio-gatsby/.* .circleci/pipelines/portfolio-gatsby.yml
+            * .circleci/pipelines/default.yml
 

@@ -1,0 +1,25 @@
+version: 2.1
+
+executors:
+  base:
+    docker:
+      - image: cimg/base:stable
+
+# parameters:
+#   project-one:
+#     type: boolean
+#     default: false
+    
+jobs:
+  default:
+      executor: base
+      steps:
+        - run: 
+            command: |
+              echo "no terraform changes"
+
+workflows:
+  default:
+    jobs:
+      - default
+      
