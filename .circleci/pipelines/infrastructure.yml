@@ -62,7 +62,7 @@ commands:
             CHANGED_SERVICES=$(git diff-tree --no-commit-id --name-only -r "$CIRCLE_SHA1" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ')
             if [ -z "$CHANGED_SERVICES" ]; then
               echo "No changes detected in any services. Halting job."
-              circleci-agent halt
+              circleci-agent step halt
             else
               echo "Changes detected in services: $CHANGED_SERVICES"
             fi
