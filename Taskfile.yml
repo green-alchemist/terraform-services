@@ -160,9 +160,9 @@ tasks:
 
   plan-changed:
     desc: "Creates a Terraform plan for services that have changed since 'main'."
-    preconditions:
-      - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
-        msg: "✅ No changed services detected. Nothing to plan."
+    # preconditions:
+    #   - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
+    #     msg: "✅ No changed services detected. Nothing to plan."
     cmds:
       - for: { var: CHANGED_SERVICES }
         task: plan-service
