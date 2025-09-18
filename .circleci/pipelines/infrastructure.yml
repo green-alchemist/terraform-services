@@ -63,16 +63,23 @@ commands:
           name: "Check for changed services"
           command: |
             CHANGED_SERVICES=$(git diff-tree --no-commit-id --name-only -r "$CIRCLE_SHA1" | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' ')
-            if [ -z "$CHANGED_SERVICES" ]; then
-              echo "No changes detected in any services. Stopping."
-              # If no changes, we do nothing. The pipeline stops.
+            if [ -n "$CHANGED_SERVICES" ]; then
+              echo "Changes detected. Marking pipeline for continuation."
+              # Create a simple file to act as a signal
+              mkdir -p /tmp/workspace
+              touch /tmp/workspace/changes_detected
             else
-              echo "Changes detected. Continuing to Terraform workflow."
-              # If changes are found, we set the pipeline parameter to true
-              continuation/continue:
-                configuration_path: .circleci/continustion-onfig.yml
-                parameters: '{ "run_tf_workflow": true }'
+              echo "No changes detected in any services. Stopping."
             fi
+      # Step 2: This step is conditional and only runs if the sentinel file exists.
+      - when:
+          condition:
+            file.exists:
+              path: /tmp/workspace/changes_detected
+          steps:
+            - continuation/continue:
+                configuration_path: .circleci/continue_config.yml
+                parameters: '{ "run_tf_workflow": true }'
 
 jobs:
   change_check:
