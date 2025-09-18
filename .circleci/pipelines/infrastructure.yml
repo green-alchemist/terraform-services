@@ -1,9 +1,11 @@
 version: 2.1
 
 orbs:
-  monorepo: monorepo
   aws-cli: circleci/aws-cli@3.1.1
   terraform: circleci/terraform@3.7.0
+
+include:
+  - local: ../orbs/orb.yml
 
 anchors:
   - &context
@@ -20,12 +22,12 @@ workflows:
   # This workflow only runs if it was triggered by the top-level path-filtering job.
   terraform-ci-cd:
     jobs:
-      - monorepo/terraform_ci_job:
+      - terraform_ci_job:
           name: terraform_validate
           mode: validate
           <<: *context
           <<: *branch_filter
-      - monorepo/terraform_ci_job:
+      - terraform_ci_job:
           name: terraform_plan
           mode: plan
           <<: *context
@@ -36,7 +38,7 @@ workflows:
           type: approval
           requires:
             - terraform_plan
-      - monorepo/terraform_ci_job:
+      - terraform_ci_job:
           name: terraform_apply
           mode: apply
           <<: *context
