@@ -1,7 +1,6 @@
 version: 3
 
 vars:
-
   SERVICE_ENV_PAIRS:
     sh: |
       set -e
@@ -22,6 +21,15 @@ vars:
   # Parses the JSON string into a structured list that Task can iterate over.
   PARSED_PAIRS:
     ref: fromJson .SERVICE_ENV_PAIRS
+  CURRENT_BRANCH:
+    sh: git rev-parse --abbrev-ref HEAD
+  LOCAL_CHANGES:
+    sh: git diff --name-only HEAD | awk -F'/' '/^services\// {print $2}' | LC_ALL=C sort -u | tr '\n' ' '
+  UNPUSHED_COMMITS:
+    sh: git diff --name-only origin/{{.CURRENT_BRANCH}}...HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
+  IS_CI:
+    sh: 'test -n "$CIRCLECI" && echo "true" || echo "false"'
+
 
 
   # Determines which services have changed. Adapts for CI vs. local environments.
@@ -36,102 +44,14 @@ vars:
     
   # Lists all available services based on the services/ directory.
   ALL_SERVICES:
-    sh: find services -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | tr '\n' ' '
+    sh: find services -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | LC_ALL=C sort | tr '\n' ' '
 
 
 tasks:
-
-
-#   init:
-#     deps: [clean]
-#     desc: terraform init on new service changes found in git
-#     cmds:
-#       - |
-#         echo "Initializing all services..."
-#         for service in {{.ALL_SERVICES}}; do
-#           echo "--- Initializing Service: $service ---"
-#           for env_path in ./services/$service/environments/*/; do
-#             if [ -d "$env_path" ]; then
-#               env=$(basename "$env_path")
-#               echo "  -> Environment: $env"
-#               terraform -chdir=./services/$service init -backend-config=./environments/$env/backend.tfvars
-#             fi
-#           done
-#         done
-#         echo "Done."
-
-  
-#   plan:
-#     deps: [init]
-#     desc: terraform plan on new service changes found in git
-#     cmds:
-#       - |
-#         echo "Starting terraform plan"; \
-#         for service in {{.SERVICES}}; do \
-#           echo $service; \
-#           terraform -chdir=./services/$service plan; \
-#         done; \
-#         echo "Done running terraform plan"; 
-
-#   apply:
-#     deps: [clean, init]
-#     desc: terraform plan on new service changes found in git
-#     cmds:
-#       - |
-#         echo "Starting terraform apply"; \
-#         for service in {{.SERVICES}}; do \
-#           echo $service; \
-#           terraform -chdir=./services/$service apply; \
-#         done; \
-#         echo "Done running terraform plan";
-
-#   fmt:
-#     deps: [clean]
-#     desc: terraform fmt check only
-#     cmds:
-#       - |
-#         echo "Starting terraform fmt -check"; \
-#         for service in {{.SERVICES}}; do \
-#           terraform -chdir=./services/$service fmt -check=true -write=false -diff=true; \
-#         done; \
-#         echo "Done running terraform fmt"; 
-  
-#   fmt-all:
-#     deps: [clean]
-#     desc: terraform fmt check only
-#     cmds:
-#       - |
-#         echo "Starting terraform fmt -check"; \
-#         for service in {{.ALL_SERVICES}}; do \
-#           terraform -chdir=./services/$service fmt -check=true -write=false -diff=true; \
-#         done; \
-#         echo "Done running terraform fmt-all"; 
-  
-#   fmt-write:
-#     deps: [clean]
-#     desc: terraform fmt write
-#     cmds:
-#       - |
-#         echo "Starting terraform fmt-write"; \
-#         for service in {{.SERVICES}}; do \
-#           terraform -chdir=./services/$service fmt -write=true; \
-#         done; \
-#         echo "Done running terraform fmt-write"; 
-
-#   fmt-write-all:
-#     deps: [clean]
-#     desc: terraform fmt write all
-#     cmds:
-#       - |
-#         echo "Starting terraform fmt-write-all"; \
-#         for service in {{.ALL_SERVICES}}; do \
-#           terraform -chdir=./services/$service fmt -write=true; \
-#         done; \
-#         echo "Done running terraform fmt-write-all"; 
   doc-root:
     desc: "Generates the root README.md file with a dynamic list of services."
-    prompt: "This will overwrite the root README.md file. Are you sure? [y/N]"
     cmds:
+      - task: _prompt-confirm
       - task: doc-root-header
       - for: { var: ALL_SERVICES }
         task: doc-root-service-link
@@ -139,11 +59,10 @@ tasks:
           SERVICE: '{{.ITEM}}'
       - task: doc-root-footer
 
-  documentation:
+  docs:
     desc: "Generates READMEs for all modules and a master index."
-    prompt: "This will overwrite existing README files. Are you sure? [y/N]"
-    # Run the steps in a clear, sequential order
     cmds:
+      - task: _prompt-confirm
       - task: doc-header
       - for: { var: ALL_SERVICES }
         task: doc-module
@@ -196,7 +115,6 @@ tasks:
   
 # End documentation functions
 
-
   default:
     cmds:
       - task --list-all
@@ -207,17 +125,52 @@ tasks:
       - |
         echo "All Services: {{.ALL_SERVICES}}"
         echo "Chnaged Services: {{.CHANGED_SERVICES}}"
+        echo "Local Chanegs: {{.LOCAL_CHANGES}}"
+        echo "Unpushued Changes: {{.UNPUSHED_COMMITS}}"
         echo "Service env pairs: {{.SERVICE_ENV_PAIRS}}"
         echo "Parsed Pairs: {{.PARSED_PAIRS}}"
         
 
 # --- CI/CD TASKS (for changed services) ---
+  plan-local:
+    desc: "Creates a Terraform plan for services with uncommitted local changes."
+    preconditions:
+      - sh: '[ -n "{{.LOCAL_CHANGES}}" ]'
+        msg: "✅ No uncommitted local changes detected in any services."
+    cmds:
+      - for: { var: LOCAL_CHANGES }
+        task: plan-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+
+  plan-unpushed:
+    desc: "Creates a Terraform plan for services with committed but unpushed changes."
+    preconditions:
+      - sh: '[ -n "{{.UNPUSHED_COMMITS}}" ]'
+        msg: "✅ No unpushed commits detected in any services."
+    cmds:
+      - for: { var: UNPUSHED_COMMITS }
+        task: plan-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+
+  validate-changed:
+    deps: [clean]
+    desc: "Validates changed services (default env: staging)."
+    cmds:
+      - for: { var: CHANGED_SERVICES }
+        task: validate-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
 
   plan-changed:
     desc: "Creates a Terraform plan for services that have changed since 'main'."
-    preconditions:
-      - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
-        msg: "✅ No changed services detected. Nothing to plan."
+    # preconditions:
+    #   - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
+    #     msg: "✅ No changed services detected. Nothing to plan."
     cmds:
       - for: { var: CHANGED_SERVICES }
         task: plan-service
@@ -227,9 +180,9 @@ tasks:
 
   apply-changed:
     desc: "Applies the Terraform plan for changed services."
-    preconditions:
-      - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
-        msg: "✅ No changed services detected. Nothing to apply."
+    # preconditions:
+    #   - sh: '[ -n "{{.CHANGED_SERVICES}}" ]'
+    #     msg: "✅ No changed services detected. Nothing to apply."
     cmds:
       - for: { var: CHANGED_SERVICES }
         task: apply-service
@@ -237,14 +190,6 @@ tasks:
           service: '{{.ITEM}}'
           env: '{{.env | default "staging"}}'
 
-  validate-changed:
-    desc: "Validates changed services (default env: staging)."
-    cmds:
-      - for: { var: CHANGED_SERVICES }
-        task: validate-service
-        vars:
-          service: '{{.ITEM}}'
-          env: '{{.env | default "staging"}}'
 
 
   # --- MANUAL TASKS (for all services) ---
@@ -289,6 +234,11 @@ tasks:
     desc: Remove terraform build files
     cmds:
       - find . -name .terraform | xargs rm -rf;
+  
+  clean-lock:
+    desc: Remove terraform lock files
+    cmds:
+      - find . -type f -name ".terraform.lock.hcl" -delete
 
   fmt:
     desc: "Formats all Terraform files recursively"
@@ -320,6 +270,19 @@ tasks:
 
 
   # --- HELPER TASKS (internal) ---
+  _prompt-confirm:
+    internal: true
+    cmds:
+      - |
+        if test {{.IS_CI}} = false; then
+          printf "This will overwrite existing README files. Are you sure? [y/N] "
+          read -r answer
+          if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
+            echo "Aborted."
+            exit 1
+          fi
+        fi
+        
   init-service:
     internal: true
     cmds:

@@ -12,4 +12,3 @@ variable "environment" {
   description = "AWS Env"
   default     = "staging"
 }
-

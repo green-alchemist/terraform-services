@@ -1,0 +1,92 @@
+# This file contains ONLY the workflows for deploying the Gatsby application.
+version: 2.1
+
+parameters:
+  run_gatsby_deployment:
+    type: boolean
+    default: false
+
+orbs:
+  node: circleci/node@5.0.2
+  aws-cli: circleci/aws-cli@3.1.1
+  terraform: circleci/terraform@3.7.0
+  discord: antonioned/discord@0.1.0
+
+anchors:
+  - &context
+    context:
+      - circleci-secrets
+      - slack-notifications
+
+jobs:
+  build_and_deploy_gatsby:
+    docker:
+      - image: cimg/node:16.17-browsers
+    steps:
+      - checkout # Checks out terraform-services repo
+      - aws-cli/setup:
+          role-arn: ${AWS_OIDC_ROLE_ARN}
+      - add_ssh_keys
+      - terraform/install
+
+      # 1. Checkout the Gatsby application code
+      - run:
+          name: "Checkout Gatsby Application Code"
+          command: git clone git@github.com:green-alchemist/portfolio-gatsby.git gatsby-app
+            
+      # 2. Build the Gatsby site
+      - run:
+          name: "Install Gatsby Dependencies"
+          command: |
+            cd gatsby-app
+            npm install
+      - run:
+          name: "Build Gatsby Site"
+          command: |
+            cd gatsby-app
+            npm run build
+            
+      # 3. Fetch Outputs, Deploy to S3, and Invalidate CloudFront
+      - run:
+          name: "Deploy and Invalidate"
+          command: |
+            echo "Fetching Terraform outputs..."
+            cd ci
+            terraform init -backend-config="bucket=${TF_STATE_BUCKET}"
+            S3_BUCKET=$(terraform output -raw s3_bucket_name)
+            CF_DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+            
+            echo "S3 Bucket: ${S3_BUCKET}"
+            echo "CloudFront ID: ${CF_DIST_ID}"
+
+            echo "Deploying to S3..."
+            aws s3 sync ../gatsby-app/public s3://${S3_BUCKET} --delete
+
+            echo "Invalidating CloudFront cache..."
+            aws cloudfront create-invalidation --distribution-id ${CF_DIST_ID} --paths "/*"
+
+      # - discord/status:
+      #     webhook: "${DISCORD_STATUS_WEBHOOK}"
+      #     failure_message: "🚨 Gatsby deployment failed for tag `${CIRCLE_TAG}`."
+      #     success_message: "✅ Gatsby site deployed successfully for tag `${CIRCLE_TAG}`."
+
+
+workflows:
+  # Deploys the Gatsby application via a git tag.
+  deploy-portfolio-gatsby-by-tag:
+    unless: << pipeline.parameters.run_gatsby_deployment >>
+    jobs:
+      - build_and_deploy_gatsby:
+          <<: *context
+          filters:
+            tags:
+              only: /^deploy-.*/
+            branches:
+              ignore: /.*/
+  
+  # Triggers a Gatsby deployment via an API call (e.g., from a Strapi webhook).
+  api-triggered-deployment:
+    when: << pipeline.parameters.run_gatsby_deployment >>
+    jobs:
+      - build_and_deploy_gatsby:
+          <<: *context

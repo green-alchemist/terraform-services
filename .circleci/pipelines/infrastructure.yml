@@ -1,0 +1,121 @@
+version: 2.1
+
+orbs:
+  aws-cli: circleci/aws-cli@3.1.1
+  terraform: circleci/terraform@3.7.0
+
+anchors:
+  - &context
+    context:
+      - circleci-secrets
+      - slack-notifications
+  - &branch_filter
+    filters:
+      branches:
+        only:
+          - kyle
+
+commands:
+  install_task:
+    steps:
+      - run:
+          name: "Install Task"
+          command: |
+            sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
+  setup_terraform_cache:
+    steps:
+      - run:
+          name: "Ensure plugin cache directory exists"
+          command: mkdir -p /home/circleci/.terraform.d/plugin-cache
+      - run:
+          name: "Generate Cache Key"
+          command: find services -name ".terraform.lock.hcl" -print0 | sort -z | xargs -0 sha256sum > cache_checksum.txt
+      - restore_cache:
+          keys:
+            - terraform-providers-v2-{{ checksum "cache_checksum.txt" }}
+            - terraform-providers-v2-
+
+  save_terraform_cache:
+    steps:
+      - save_cache:
+          key: terraform-providers-v2-{{ checksum "cache_checksum.txt" }}
+          paths:
+            - "/home/circleci/.terraform.d/plugin-cache"
+jobs:
+  # This single, parameterized job replaces your three separate terraform jobs.
+  terraform_ci_job:
+    parameters:
+      mode:
+        type: enum
+        enum: ["validate", "plan", "apply"]
+        default: "validate"
+    docker:
+      - image: cimg/base:stable
+    environment:
+      TF_PLUGIN_CACHE_DIR: "/home/circleci/.terraform.d/plugin-cache"
+    steps:
+      - checkout
+      - when:
+          condition:
+            equal: [ "apply", << parameters.mode >> ]
+          steps:
+            - attach_workspace:
+                at: ~/project
+      - setup_terraform_cache
+      - aws-cli/setup:
+          role-arn: ${AWS_OIDC_ROLE_ARN}
+      - terraform/install
+      - install_task
+      - run:
+          name: "Run Terraform << parameters.mode >>"
+          command: |
+            case "<< parameters.mode >>" in
+              validate)
+                task validate-changed
+                ;;
+              plan)
+                task plan-changed env=staging
+                ;;
+              apply)
+                task apply-changed env=staging
+                ;;
+            esac
+      - when:
+          condition:
+            equal: [ "plan", << parameters.mode >> ]
+          steps:
+            - persist_to_workspace:
+                root: .
+                paths:
+                  - .
+      - save_terraform_cache
+
+
+workflows:
+  # This workflow only runs if it was triggered by the top-level path-filtering job.
+  terraform-ci-cd:
+    jobs:
+      - terraform_ci_job:
+          name: terraform_validate
+          mode: validate
+          <<: *context
+          <<: *branch_filter
+      - terraform_ci_job:
+          name: terraform_plan
+          mode: plan
+          <<: *context
+          <<: *branch_filter
+          requires:
+            - terraform_validate
+      - hold-for-apply:
+          type: approval
+          requires:
+            - terraform_plan
+      - terraform_ci_job:
+          name: terraform_apply
+          mode: apply
+          <<: *context
+          <<: *branch_filter
+          requires:
+            - hold-for-apply

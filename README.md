@@ -13,8 +13,8 @@ The repository is organized into two main top-level directories:
 
 ## Available Services
 * [`_bootstrap`](./services/_bootstrap/README.md)
-* [`strapi-admin`](./services/strapi-admin/README.md)
 * [`portfolio-gatsby`](./services/portfolio-gatsby/README.md)
+* [`strapi-admin`](./services/strapi-admin/README.md)
 
 ## Local Development
 
