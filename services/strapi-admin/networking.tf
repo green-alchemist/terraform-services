@@ -65,14 +65,14 @@ module "aurora_security_group" {
 }
 
 # This is the corrected module block
-module "api_gateway" {
-  source             = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
-  name               = "strapi-admin-${var.environment}"
-  subnet_ids         = [module.public_subnet.public_subnet_id]
-  security_group_ids = [module.vpc_link_security_group.security_group_id]
+# module "api_gateway" {
+#   source             = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
+#   name               = "strapi-admin-${var.environment}"
+#   subnet_ids         = [module.public_subnet.public_subnet_id]
+#   security_group_ids = [module.vpc_link_security_group.security_group_id]
 
-  # --- Corrected Arguments ---
-  # These are the new required inputs we were missing
-  private_dns_name = module.strapi_fargate.service_discovery_dns_name
-  container_port   = 1337
-}
+#   # --- Corrected Arguments ---
+#   # These are the new required inputs we were missing
+#   private_dns_name = module.strapi_fargate.service_discovery_dns_name
+#   container_port   = 1337
+# }
