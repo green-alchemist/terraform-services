@@ -171,7 +171,7 @@ workflows:
           <<: *context
           <<: *master_branch_filter
           requires:
-            - check_for_changes
+            - change_check
       - terraform_plan:
           <<: *context
           <<: *master_branch_filter
