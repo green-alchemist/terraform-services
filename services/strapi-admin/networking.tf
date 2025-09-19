@@ -5,6 +5,7 @@ module "vpc" {
 module "public_subnet" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/public-subnet"
   vpc_id = module.vpc.vpc_id
+  availability_zones = ["us-east-1a", "us-east-1b"]
 }
 
 module "internet_gateway" {

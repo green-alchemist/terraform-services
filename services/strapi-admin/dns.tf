@@ -11,5 +11,5 @@ module "dns_record" {
 
   # Point to the API Gateway's custom domain
   alias_name    = module.api_gateway.api_endpoint # This will need to be updated to a custom domain
-  alias_zone_id = module.api_gateway.api_id       # This will need to be updated to a custom domain
+  alias_zone_id = module.api_gateway.hosted_zone_id       # This will need to be updated to a custom domain
 }
