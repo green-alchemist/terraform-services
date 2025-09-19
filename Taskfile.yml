@@ -348,7 +348,9 @@ tasks:
 
   apply-service:
     internal: true
-    # No init needed here since we apply a plan file
+    deps:
+      - task: init-service
+        vars: { service: "{{.service}}", env: "{{.env}}" }
     cmds:
       - 'echo "--- Applying: {{.service}} ({{.env}}) ---"'
       - terraform -chdir=./services/{{.service}}/ apply "../../.tfplans/{{.env}}/{{.service}}.tfplan"

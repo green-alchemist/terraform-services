@@ -34,7 +34,7 @@ module "ecr_parameter" {
     }
     "/strapi/${var.environment}/env/DATABASE_CLIENT" = {
       value       = "postgres"
-      description = "The database endpoint for the Strapi Admin ${var.environment} postgres."
+      description = "The database client for the Strapi Admin ${var.environment} postgres."
       overwrite   = true
     }
     "/strapi/${var.environment}/env/NODE_ENV" = {
