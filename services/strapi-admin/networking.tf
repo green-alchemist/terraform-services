@@ -20,7 +20,7 @@ module "route_table" {
   source              = "git@github.com:green-alchemist/terraform-modules.git//modules/route-table"
   vpc_id              = module.vpc.vpc_id
   internet_gateway_id = module.internet_gateway.internet_gateway_id
-  subnet_ids          = module.public_subnet.subnet_ids
+  subnet_ids          = module.public_subnet.public_subnets_map
 }
 
 module "vpc_link_security_group" {
