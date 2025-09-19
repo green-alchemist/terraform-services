@@ -26,7 +26,7 @@ vars:
   LOCAL_CHANGES:
     sh: git diff --name-only HEAD | awk -F'/' '/^services\// {print $2}' | LC_ALL=C sort -u | tr '\n' ' '
   UNPUSHED_COMMITS:
-    sh: git diff --name-only origin/{{.CURRENT_BRANCH}}...HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
+    sh: git diff --name-only origin/master...HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
   IS_CI:
     sh: 'test -n "$CIRCLECI" && echo "true" || echo "false"'
 
@@ -153,6 +153,19 @@ tasks:
     cmds:
       - for: { var: LOCAL_CHANGES }
         task: plan-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+  
+  validate-local:
+    deps: [clean]
+    desc: "Validates changed services (default env: staging)."
+    preconditions:
+      - sh: '[ -n "{{.LOCAL_CHANGES}}" ]'
+        msg: "✅ No uncommitted local changes detected in any services."
+    cmds:
+      - for: { var: LOCAL_CHANGES }
+        task: validate-service
         vars:
           service: '{{.ITEM}}'
           env: '{{.env | default "staging"}}'
