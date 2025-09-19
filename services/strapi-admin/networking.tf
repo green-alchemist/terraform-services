@@ -5,7 +5,10 @@ module "vpc" {
 module "public_subnet" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/public-subnet"
   vpc_id = module.vpc.vpc_id
-  availability_zones = ["us-east-1a", "us-east-1b"]
+  public_subnets = {
+    "us-east-1a" = "10.0.1.0/24"
+    "us-east-1b" = "10.0.2.0/24"
+  }
 }
 
 module "internet_gateway" {
@@ -17,7 +20,7 @@ module "route_table" {
   source              = "git@github.com:green-alchemist/terraform-modules.git//modules/route-table"
   vpc_id              = module.vpc.vpc_id
   internet_gateway_id = module.internet_gateway.internet_gateway_id
-  public_subnet_id    = module.public_subnet.public_subnet_id
+  subnet_ids          = module.public_subnet.subnet_ids
 }
 
 module "vpc_link_security_group" {
@@ -69,7 +72,7 @@ module "aurora_security_group" {
 module "api_gateway" {
   source             = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
   name               = "strapi-admin-${var.environment}"
-  subnet_ids         = [module.public_subnet.public_subnet_id]
+  subnet_ids         = module.public_subnet.subnet_ids
   security_group_ids = [module.vpc_link_security_group.security_group_id]
   private_dns_name   = module.strapi_fargate.service_discovery_dns_name
   container_port     = 1337

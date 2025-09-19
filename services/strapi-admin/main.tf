@@ -16,7 +16,7 @@ module "strapi_fargate" {
   container_name              = "strapi-admin"
   ecr_repository_url          = module.strapi_ecrs.urls["strapi-admin-${var.environment}"]
   ecs_task_execution_role_arn = module.ecs_task_execution_role.role_arn
-  subnet_ids                  = [module.public_subnet.public_subnet_id]
+  subnet_ids                  = module.public_subnet.subnet_ids
   security_group_ids          = [module.strapi_security_group.security_group_id]
   vpc_id                      = module.vpc.vpc_id
 

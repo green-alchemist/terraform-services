@@ -3,7 +3,7 @@ module "aurora_db" {
   database_name            = "strapi"
   master_username          = "strapiadmin"
   master_password          = data.aws_ssm_parameter.database_password.value
-  subnet_ids               = [module.public_subnet.public_subnet_id]
+  subnet_ids               = module.public_subnet.subnet_ids
   security_group_ids       = [module.aurora_security_group.security_group_id]
   seconds_until_auto_pause = 600
   max_capacity             = 1.0
