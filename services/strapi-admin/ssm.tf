@@ -24,7 +24,7 @@ module "ecr_parameter" {
     }
     "/strapi/${var.environment}/env/DATABASE_USERNAME" = {
       value       = module.aurora_db.master_username
-      description = "The database endpoint for the Strapi Admin ${var.environment} postgres."
+      description = "The database username for the Strapi Admin ${var.environment} postgres."
       overwrite   = true
     }
     "/strapi/${var.environment}/env/DATABASE_NAME" = {
