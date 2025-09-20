@@ -379,6 +379,6 @@ tasks:
       - |
         terraform -chdir=./services/{{.service}}/ destroy \
           -var-file=../../environments/{{.env}}/{{.service}}/main.tfvars \
-          -auto-approve
+          -auto-approve 
     requires:
       vars: [service, env]

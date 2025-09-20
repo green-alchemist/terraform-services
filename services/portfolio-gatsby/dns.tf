@@ -8,8 +8,8 @@ module "subdomain_dns_record" {
   domain_name  = var.domain_name
   record_names = [var.subdomain] # e.g., ["portfolio-staging"]
 
-  alias_name    = module.cloudfront_static_site.domain_name
-  alias_zone_id = module.cloudfront_static_site.hosted_zone_id
+  alias_target_domain_name = module.cloudfront_static_site.domain_name
+  alias_zone_id            = module.cloudfront_static_site.hosted_zone_id
 }
 
 # --- PRODUCTION REDIRECTS & DNS ---
@@ -44,8 +44,8 @@ module "production_dns_record" {
   domain_name  = var.domain_name
   record_names = [var.subdomain] # e.g., ["portfolio"]
 
-  alias_name    = module.cloudfront_static_site.domain_name
-  alias_zone_id = module.cloudfront_static_site.hosted_zone_id
+  alias_target_domain_name = module.cloudfront_static_site.domain_name
+  alias_zone_id            = module.cloudfront_static_site.hosted_zone_id
 }
 
 # Create the A records for the redirects (@ and www)
@@ -59,6 +59,6 @@ module "redirect_dns_records" {
 
   # Note: Both records can point to the same S3 bucket endpoint for redirection.
   # AWS intelligently handles the request based on the Host header.
-  alias_name    = module.redirect_apex[0].website_endpoint
-  alias_zone_id = module.redirect_apex[0].hosted_zone_id
+  alias_target_domain_name = module.redirect_apex[0].website_endpoint
+  alias_zone_id            = module.redirect_apex[0].hosted_zone_id
 }
