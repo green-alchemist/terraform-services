@@ -70,10 +70,14 @@ module "aurora_security_group" {
 
 # This is the corrected module block
 module "api_gateway" {
-  source             = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
-  name               = "strapi-admin-${var.environment}"
-  subnet_ids         = module.public_subnet.subnet_ids
-  security_group_ids = [module.vpc_link_security_group.security_group_id]
-  private_dns_name   = module.strapi_fargate.service_discovery_dns_name
-  container_port     = 1337
+  source              = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
+  name                = "strapi-admin-${var.environment}"
+  subnet_ids          = module.public_subnet.subnet_ids
+  security_group_ids  = [module.vpc_link_security_group.security_group_id]
+  private_dns_name    = module.strapi_fargate.service_discovery_dns_name
+  container_port      = 1337
+  fargate_service_arn = module.strapi_fargate.service_arn
+  domain_name         = "admin-${var.environment}.${var.root_domain_name}"
+  acm_certificate_arn = data.aws_acm_certificate.this.arn
+  target_uri          = module.strapi_fargate.service_discovery_arn
 }

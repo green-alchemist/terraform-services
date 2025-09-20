@@ -41,5 +41,5 @@ module "strapi_fargate" {
 
 output "admin_url" {
   description = "The URL of the Strapi admin panel."
-  value       = "http://admin-${var.environment}.kconley.com"
+  value       = "http://admin-${var.environment}.${var.root_domain_name}"
 }

@@ -2,14 +2,14 @@
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 4.5 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.14 |
 | <a name="requirement_circleci"></a> [circleci](#requirement\_circleci) | 0.6.1 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.67.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.14.0 |
 
 ## Modules
 
@@ -34,6 +34,7 @@
 
 | Name | Type |
 |------|------|
+| [aws_acm_certificate.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/acm_certificate) | data source |
 | [aws_route53_zone.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) | data source |
 | [aws_ssm_parameter.database_password](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameter) | data source |
 
@@ -44,6 +45,7 @@
 | <a name="input_aws_profile"></a> [aws\_profile](#input\_aws\_profile) | AWS Profile | `string` | `"default"` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS Region | `string` | `"us-east-1"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | AWS Env | `string` | `"staging"` | no |
+| <a name="input_root_domain_name"></a> [root\_domain\_name](#input\_root\_domain\_name) | base domain | `string` | `""` | no |
 
 ## Outputs
 

@@ -216,6 +216,18 @@ tasks:
           service: '{{.ITEM}}'
           env: '{{.env | default "staging"}}'
 
+  apply-local:
+    desc: "Applies the Terraform plan for LOCAL_CHANGES services."
+    preconditions:
+      - sh: '[ -n "{{.LOCAL_CHANGES}}" ]'
+        msg: "✅ No changed services detected. Nothing to apply."
+    cmds:
+      - for: { var: LOCAL_CHANGES }
+        task: apply-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+
 
 
   # --- MANUAL TASKS (for all services) ---

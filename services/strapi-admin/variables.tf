@@ -12,3 +12,8 @@ variable "environment" {
   description = "AWS Env"
   default     = "staging"
 }
+
+variable "root_domain_name" {
+  description = "base domain"
+  default     = ""
+}
