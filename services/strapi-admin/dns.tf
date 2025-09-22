@@ -1,15 +1,17 @@
 data "aws_route53_zone" "this" {
-  name = "kconley.com" # Your root domain
+  name = var.root_domain_name # Your root domain
 }
 
-# module "dns_record" {
-#   source = "git@github.com:green-alchemist/terraform-modules.git//modules/route53-record"
+module "dns_record" {
+  source = "git@github.com:green-alchemist/terraform-modules.git//modules/route53-record"
 
-#   zone_id      = data.aws_route53_zone.this.zone_id
-#   domain_name  = "kconley.com"
-#   record_names = ["admin-${var.environment}"]
+  zone_id      = data.aws_route53_zone.this.zone_id
+  domain_name  = var.root_domain_name
+  record_names = ["admin-${var.environment}"]
 
-#   # Point to the API Gateway's custom domain
-#   alias_name    = module.api_gateway.api_endpoint # This will need to be updated to a custom domain
-#   alias_zone_id = module.api_gateway.api_id       # This will need to be updated to a custom domain
-# }
+  # Point to the API Gateway's custom domain
+  alias_zone_id            = module.api_gateway.api_gateway_hosted_zone_id
+  alias_target_domain_name = module.api_gateway.api_gateway_target_domain_name
+  # alias_zone_id            = module.api_gateway.apigatewayv2_domain_name_configuration[0].hosted_zone_id
+  # alias_target_domain_name = module.api_gateway.apigatewayv2_domain_name_configuration[0].target_domain_name
+}

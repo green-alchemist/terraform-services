@@ -26,7 +26,7 @@ vars:
   LOCAL_CHANGES:
     sh: git diff --name-only HEAD | awk -F'/' '/^services\// {print $2}' | LC_ALL=C sort -u | tr '\n' ' '
   UNPUSHED_COMMITS:
-    sh: git diff --name-only origin/{{.CURRENT_BRANCH}}...HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
+    sh: git diff --name-only origin/master...HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
   IS_CI:
     sh: 'test -n "$CIRCLECI" && echo "true" || echo "false"'
 
@@ -36,10 +36,23 @@ vars:
   CHANGED_SERVICES:
     sh: |
       set -o pipefail
+      CHANGED_FILES=""
       if [ -n "$CIRCLE_SHA1" ]; then
-        git diff-tree --no-commit-id --name-only -r "$CIRCLE_SHA1" | awk -F'/' '/^services\// {print $2}' | sort -u | while read -r service; do if [ -d "services/$service" ]; then echo "$service"; fi; done | tr '\n' ' '
+        CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r "$CIRCLE_SHA1")
       else
-        git diff --name-only master... | awk -F'/' '/^services\// {print $2}' | sort -u | while read -r service; do if [ -d "services/$service" ]; then echo "$service"; fi; done | tr '\n' ' '
+        CHANGED_FILES=$(git diff --name-only master...)
+      fi
+
+      if [ -n "$CHANGED_FILES" ]; then
+        echo "$CHANGED_FILES" | \
+        awk -F'/' '/^services\// {print $2}' | \
+        grep -v '_bootstrap' | \
+        sort -u | \
+        while read -r service; do if [ -d "services/$service" ]; then echo "$service"; fi; done | \
+        tr '\n' ' '
+      else
+        # If there are no changed files, output nothing and exit successfully.
+        echo ""
       fi
     
   # Lists all available services based on the services/ directory.
@@ -143,6 +156,19 @@ tasks:
         vars:
           service: '{{.ITEM}}'
           env: '{{.env | default "staging"}}'
+  
+  validate-local:
+    deps: [clean]
+    desc: "Validates changed services (default env: staging)."
+    preconditions:
+      - sh: '[ -n "{{.LOCAL_CHANGES}}" ]'
+        msg: "✅ No uncommitted local changes detected in any services."
+    cmds:
+      - for: { var: LOCAL_CHANGES }
+        task: validate-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
 
   plan-unpushed:
     desc: "Creates a Terraform plan for services with committed but unpushed changes."
@@ -185,6 +211,18 @@ tasks:
     #     msg: "✅ No changed services detected. Nothing to apply."
     cmds:
       - for: { var: CHANGED_SERVICES }
+        task: apply-service
+        vars:
+          service: '{{.ITEM}}'
+          env: '{{.env | default "staging"}}'
+
+  apply-local:
+    desc: "Applies the Terraform plan for LOCAL_CHANGES services."
+    preconditions:
+      - sh: '[ -n "{{.LOCAL_CHANGES}}" ]'
+        msg: "✅ No changed services detected. Nothing to apply."
+    cmds:
+      - for: { var: LOCAL_CHANGES }
         task: apply-service
         vars:
           service: '{{.ITEM}}'
@@ -322,7 +360,9 @@ tasks:
 
   apply-service:
     internal: true
-    # No init needed here since we apply a plan file
+    deps:
+      - task: init-service
+        vars: { service: "{{.service}}", env: "{{.env}}" }
     cmds:
       - 'echo "--- Applying: {{.service}} ({{.env}}) ---"'
       - terraform -chdir=./services/{{.service}}/ apply "../../.tfplans/{{.env}}/{{.service}}.tfplan"
@@ -339,6 +379,6 @@ tasks:
       - |
         terraform -chdir=./services/{{.service}}/ destroy \
           -var-file=../../environments/{{.env}}/{{.service}}/main.tfvars \
-          -auto-approve
+          -auto-approve 
     requires:
       vars: [service, env]
