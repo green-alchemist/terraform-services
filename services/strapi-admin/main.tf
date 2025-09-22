@@ -19,6 +19,7 @@ module "strapi_fargate" {
   subnet_ids                  = module.public_subnet.subnet_ids
   security_group_ids          = [module.strapi_security_group.security_group_id]
   vpc_id                      = module.vpc.vpc_id
+  assign_public_ip            = true
 
   # --- Enable Service Discovery ---
   enable_service_discovery = true

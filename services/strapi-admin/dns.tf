@@ -10,6 +10,8 @@ module "dns_record" {
   record_names = ["admin-${var.environment}"]
 
   # Point to the API Gateway's custom domain
-  alias_zone_id            = module.api_gateway.api_gateway_hosted_zone_id # This will need to be updated to a custom domain
+  alias_zone_id            = module.api_gateway.api_gateway_hosted_zone_id
   alias_target_domain_name = module.api_gateway.api_gateway_target_domain_name
+  # alias_zone_id            = module.api_gateway.apigatewayv2_domain_name_configuration[0].hosted_zone_id
+  # alias_target_domain_name = module.api_gateway.apigatewayv2_domain_name_configuration[0].target_domain_name
 }

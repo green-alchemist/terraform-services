@@ -38,6 +38,22 @@ module "vpc_link_security_group" {
   ]
 }
 
+module "vpc_endpoint_security_group" {
+  source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
+  name   = "strapi-admin-endpoint-sg"
+  vpc_id = module.vpc.vpc_id
+
+  # Allow the main Strapi Fargate service to talk to the endpoints
+  ingress_rules = [
+    {
+      from_port       = 443
+      to_port         = 443
+      protocol        = "tcp"
+      security_groups = [module.strapi_security_group.security_group_id]
+    }
+  ]
+}
+
 module "strapi_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
   name   = "strapi-admin-sg"
@@ -80,4 +96,73 @@ module "api_gateway" {
   domain_name         = "admin-${var.environment}.${var.root_domain_name}"
   acm_certificate_arn = data.aws_acm_certificate.this.arn
   target_uri          = module.strapi_fargate.service_discovery_arn
+  route_keys = [
+    "ANY /admin/{proxy+}",
+    "ANY /api/{proxy+}",
+    "ANY /graphql"
+  ]
 }
+
+# module "api_gateway" {
+#   source  = "terraform-aws-modules/apigateway-v2/aws"
+#   version = "~> 2.0" # It's good practice to pin to a major version
+
+#   name          = "strapi-admin-${var.environment}"
+#   description   = "HTTP API Gateway for Strapi Admin"
+#   protocol_type = "HTTP"
+
+#   # --- Domain and CORS ---
+#   domain_name                 = "admin-${var.environment}.kconley.com"
+#   domain_name_certificate_arn = data.aws_acm_certificate.this.arn # Make sure this data source exists in dns.tf
+
+#   cors_configuration = {
+#     allow_headers = ["*"]
+#     allow_methods = ["*"]
+#     allow_origins = ["*"]
+#   }
+
+#   # --- VPC Link ---
+#   create_vpc_link              = true
+#   disable_execute_api_endpoint = true # Important for private integrations
+#   vpc_links = {
+#     strapi-vpc = {
+#       name               = "strapi-admin-${var.environment}-vpc-link"
+#       security_group_ids = [module.vpc_link_security_group.security_group_id]
+#       # Note: For production, these should be private subnets.
+#       subnet_ids         = module.public_subnet.subnet_ids
+#     }
+#   }
+
+#   # --- Routes and Integrations for Strapi ---
+#   integrations = {
+#     # Route for the Admin Panel
+#     "ANY /admin/{proxy+}" = {
+#       connection_type    = "VPC_LINK"
+#       vpc_link           = "strapi-vpc"
+#       integration_uri    = module.strapi_fargate.service_discovery_arn
+#       integration_type   = "HTTP_PROXY"
+#       integration_method = "ANY"
+#     }
+#     # Route for the Content API
+#     "ANY /api/{proxy+}" = {
+#       connection_type    = "VPC_LINK"
+#       vpc_link           = "strapi-vpc"
+#       integration_uri    = module.strapi_fargate.service_discovery_arn
+#       integration_type   = "HTTP_PROXY"
+#       integration_method = "ANY"
+#     }
+#     # Route for the GraphQL Plugin
+#     "ANY /graphql" = {
+#       connection_type    = "VPC_LINK"
+#       vpc_link           = "strapi-vpc"
+#       integration_uri    = module.strapi_fargate.service_discovery_arn
+#       integration_type   = "HTTP_PROXY"
+#       integration_method = "ANY"
+#     }
+#   }
+
+#   tags = {
+#     Service     = "strapi-admin"
+#     Environment = var.environment
+#   }
+# }
