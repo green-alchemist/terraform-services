@@ -8,36 +8,55 @@ provider "aws" {
   region  = var.aws_region
 }
 
+data "aws_ssm_parameters_by_path" "env_vars" {
+  path            = "/strapi/${var.environment}/env/"
+  with_decryption = true
+  depends_on      = [module.env_parameter]
+}
+
+locals {
+  ssm_env_vars = {
+    for name, value in zipmap(data.aws_ssm_parameters_by_path.env_vars.names, data.aws_ssm_parameters_by_path.env_vars.values) :
+    upper(basename(name)) => value
+  }
+}
+
 module "strapi_fargate" {
-  source                      = "git@github.com:green-alchemist/terraform-modules.git//modules/fargate"
+  source     = "git@github.com:green-alchemist/terraform-modules.git//modules/fargate"
+  aws_region = var.aws_region
+  depends_on = [module.aurora_db]
+
   cluster_name                = "strapi-admin-cluster"
   task_family                 = "strapi-admin-task"
   service_name                = "strapi-admin-service"
   container_name              = "strapi-admin"
   ecr_repository_url          = module.strapi_ecrs.urls["strapi-admin-${var.environment}"]
   ecs_task_execution_role_arn = module.ecs_task_execution_role.role_arn
-  subnet_ids                  = module.public_subnet.subnet_ids
+  subnet_ids                  = module.private_subnets.subnet_ids
   security_group_ids          = [module.strapi_security_group.security_group_id]
   vpc_id                      = module.vpc.vpc_id
-  assign_public_ip            = true
+  assign_public_ip            = false
 
   # --- Enable Service Discovery ---
   enable_service_discovery = true
   private_dns_namespace    = "internal"
 
   # --- Enable Scale-to-Zero ---
-  enable_autoscaling = true
-  min_tasks          = 0
-  max_tasks          = 1
+  enable_autoscaling            = true
+  min_tasks                     = 1
+  max_tasks                     = 1
+  scale_down_evaluation_periods = 1
 
-  environment_variables = {
-    DATABASE_CLIENT   = "postgres"
-    DATABASE_HOST     = module.aurora_db.cluster_endpoint
-    DATABASE_PORT     = module.aurora_db.cluster_port
-    DATABASE_NAME     = module.aurora_db.database_name
-    DATABASE_USERNAME = "strapiadmin"
-    DATABASE_PASSWORD = data.aws_ssm_parameter.database_password.value
-  }
+  environment_variables = merge(
+    local.ssm_env_vars,
+    {
+      DATABASE_CLIENT   = "postgres"
+      DATABASE_HOST     = module.aurora_db.cluster_endpoint
+      DATABASE_PORT     = module.aurora_db.cluster_port
+      DATABASE_NAME     = module.aurora_db.database_name
+      DATABASE_USERNAME = "strapiadmin"
+    }
+  )
 }
 
 output "admin_url" {

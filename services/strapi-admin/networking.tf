@@ -2,167 +2,131 @@ module "vpc" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/vpc"
 }
 
-module "public_subnet" {
-  source = "git@github.com:green-alchemist/terraform-modules.git//modules/public-subnet"
-  vpc_id = module.vpc.vpc_id
-  public_subnets = {
+module "public_subnets" {
+  source                     = "git@github.com:green-alchemist/terraform-modules.git//modules/subnets"
+  vpc_id                     = module.vpc.vpc_id
+  name_prefix                = "public"
+  assign_public_ip_on_launch = true
+
+  subnets = {
     "us-east-1a" = "10.0.1.0/24"
     "us-east-1b" = "10.0.2.0/24"
   }
 }
+
+module "private_subnets" {
+  source      = "git@github.com:green-alchemist/terraform-modules.git//modules/subnets"
+  vpc_id      = module.vpc.vpc_id
+  name_prefix = "private"
+
+  subnets = {
+    "us-east-1a" = "10.0.101.0/24"
+    "us-east-1b" = "10.0.102.0/24"
+  }
+}
+
 
 module "internet_gateway" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/internet-gateway"
   vpc_id = module.vpc.vpc_id
 }
 
-module "route_table" {
-  source              = "git@github.com:green-alchemist/terraform-modules.git//modules/route-table"
-  vpc_id              = module.vpc.vpc_id
-  internet_gateway_id = module.internet_gateway.internet_gateway_id
-  subnet_ids          = module.public_subnet.public_subnets_map
+module "route_tables" {
+  source      = "git@github.com:green-alchemist/terraform-modules.git//modules/route-tables"
+  name_prefix = "strapi-admin"
+  vpc_id      = module.vpc.vpc_id
+
+  # Public Route Table configuration
+  create_public_route_table = true
+  internet_gateway_id       = module.internet_gateway.internet_gateway_id
+  public_subnets_map        = module.public_subnets.subnet_objects
+
+  # Private Route Table configuration
+  create_private_route_table = true
+  private_subnets_map        = module.private_subnets.subnet_objects
 }
+
+# --- Security Groups (Defined as empty containers first) ---
 
 module "vpc_link_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
   name   = "strapi-admin-vpc-link-sg"
   vpc_id = module.vpc.vpc_id
-  egress_rules = [
-    {
-      from_port       = 0
-      to_port         = 0
-      protocol        = "-1"
-      cidr_blocks     = ["0.0.0.0/0"]
-      security_groups = null
-    }
-  ]
 }
 
 module "vpc_endpoint_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
   name   = "strapi-admin-endpoint-sg"
   vpc_id = module.vpc.vpc_id
-
-  # Allow the main Strapi Fargate service to talk to the endpoints
-  ingress_rules = [
-    {
-      from_port       = 443
-      to_port         = 443
-      protocol        = "tcp"
-      security_groups = [module.strapi_security_group.security_group_id]
-    }
-  ]
 }
 
 module "strapi_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
   name   = "strapi-admin-sg"
   vpc_id = module.vpc.vpc_id
-  ingress_rules = [
-    {
-      from_port       = 1337
-      to_port         = 1337
-      protocol        = "tcp"
-      cidr_blocks     = null
-      security_groups = [module.vpc_link_security_group.security_group_id]
-    }
-  ]
 }
 
 module "aurora_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
   name   = "strapi-admin-db-sg"
   vpc_id = module.vpc.vpc_id
-  ingress_rules = [
-    {
-      from_port       = 5432
-      to_port         = 5432
-      protocol        = "tcp"
-      cidr_blocks     = null
-      security_groups = [module.strapi_security_group.security_group_id]
-    }
-  ]
 }
+
+resource "aws_security_group_rule" "allow_apigw_to_fargate" {
+  type                     = "ingress"
+  from_port                = 1337
+  to_port                  = 1337
+  protocol                 = "tcp"
+  source_security_group_id = module.vpc_link_security_group.security_group_id
+  security_group_id        = module.strapi_security_group.security_group_id
+}
+
+# Rule: Allow Fargate to talk to the Database
+resource "aws_security_group_rule" "allow_fargate_to_db" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = module.strapi_security_group.security_group_id
+  security_group_id        = module.aurora_security_group.security_group_id
+}
+
+# Rule: Allow Fargate to talk to the VPC Endpoints
+resource "aws_security_group_rule" "allow_fargate_to_endpoints" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = module.strapi_security_group.security_group_id
+  security_group_id        = module.vpc_endpoint_security_group.security_group_id
+}
+
+# Rule: Allow Fargate to talk outbound to the internet (for VPC Endpoints, etc.)
+resource "aws_security_group_rule" "allow_fargate_egress" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = module.strapi_security_group.security_group_id
+}
+
 
 # This is the corrected module block
 module "api_gateway" {
-  source              = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
-  name                = "strapi-admin-${var.environment}"
-  subnet_ids          = module.public_subnet.subnet_ids
-  security_group_ids  = [module.vpc_link_security_group.security_group_id]
-  private_dns_name    = module.strapi_fargate.service_discovery_dns_name
-  container_port      = 1337
-  fargate_service_arn = module.strapi_fargate.service_arn
-  domain_name         = "admin-${var.environment}.${var.root_domain_name}"
-  acm_certificate_arn = data.aws_acm_certificate.this.arn
-  target_uri          = module.strapi_fargate.service_discovery_arn
+  source                = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
+  name                  = "strapi-admin-${var.environment}"
+  subnet_ids            = module.public_subnets.subnet_ids
+  security_group_ids    = [module.vpc_link_security_group.security_group_id]
+  fargate_service_arn   = module.strapi_fargate.service_arn
+  domain_name           = "admin-${var.environment}.${var.root_domain_name}"
+  acm_certificate_arn   = data.aws_acm_certificate.this.arn
+  target_uri            = module.strapi_fargate.service_discovery_arn
+  enable_access_logging = true
   route_keys = [
+    "ANY /",
     "ANY /admin/{proxy+}",
     "ANY /api/{proxy+}",
     "ANY /graphql"
   ]
 }
-
-# module "api_gateway" {
-#   source  = "terraform-aws-modules/apigateway-v2/aws"
-#   version = "~> 2.0" # It's good practice to pin to a major version
-
-#   name          = "strapi-admin-${var.environment}"
-#   description   = "HTTP API Gateway for Strapi Admin"
-#   protocol_type = "HTTP"
-
-#   # --- Domain and CORS ---
-#   domain_name                 = "admin-${var.environment}.kconley.com"
-#   domain_name_certificate_arn = data.aws_acm_certificate.this.arn # Make sure this data source exists in dns.tf
-
-#   cors_configuration = {
-#     allow_headers = ["*"]
-#     allow_methods = ["*"]
-#     allow_origins = ["*"]
-#   }
-
-#   # --- VPC Link ---
-#   create_vpc_link              = true
-#   disable_execute_api_endpoint = true # Important for private integrations
-#   vpc_links = {
-#     strapi-vpc = {
-#       name               = "strapi-admin-${var.environment}-vpc-link"
-#       security_group_ids = [module.vpc_link_security_group.security_group_id]
-#       # Note: For production, these should be private subnets.
-#       subnet_ids         = module.public_subnet.subnet_ids
-#     }
-#   }
-
-#   # --- Routes and Integrations for Strapi ---
-#   integrations = {
-#     # Route for the Admin Panel
-#     "ANY /admin/{proxy+}" = {
-#       connection_type    = "VPC_LINK"
-#       vpc_link           = "strapi-vpc"
-#       integration_uri    = module.strapi_fargate.service_discovery_arn
-#       integration_type   = "HTTP_PROXY"
-#       integration_method = "ANY"
-#     }
-#     # Route for the Content API
-#     "ANY /api/{proxy+}" = {
-#       connection_type    = "VPC_LINK"
-#       vpc_link           = "strapi-vpc"
-#       integration_uri    = module.strapi_fargate.service_discovery_arn
-#       integration_type   = "HTTP_PROXY"
-#       integration_method = "ANY"
-#     }
-#     # Route for the GraphQL Plugin
-#     "ANY /graphql" = {
-#       connection_type    = "VPC_LINK"
-#       vpc_link           = "strapi-vpc"
-#       integration_uri    = module.strapi_fargate.service_discovery_arn
-#       integration_type   = "HTTP_PROXY"
-#       integration_method = "ANY"
-#     }
-#   }
-
-#   tags = {
-#     Service     = "strapi-admin"
-#     Environment = var.environment
-#   }
-# }

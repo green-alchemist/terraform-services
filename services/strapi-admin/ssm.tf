@@ -17,6 +17,19 @@ module "ecr_parameter" {
       description = "The ecs service name for the Strapi Admin ${var.environment} fargate."
       overwrite   = true
     }
+  }
+
+  tags = {
+    Service     = "strapi-admin"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+module "env_parameter" {
+  source = "git@github.com:green-alchemist/terraform-modules.git//modules/ssm-parameter"
+
+  parameters = {
     "/strapi/${var.environment}/env/DATABASE_HOST" = {
       value       = module.aurora_db.cluster_endpoint
       description = "The database endpoint for the Strapi Admin ${var.environment} postgres."
@@ -52,6 +65,11 @@ module "ecr_parameter" {
       description = "The database endpoint for the Strapi Admin ${var.environment} postgres."
       overwrite   = true
     }
+    "/strapi/${var.environment}/env/PUBLIC_URL" = {
+      value       = "admin-${var.environment}.${var.root_domain_name}"
+      description = "Public URL minus http"
+      overwrite   = true
+    }
   }
 
   tags = {
@@ -60,3 +78,4 @@ module "ecr_parameter" {
     ManagedBy   = "Terraform"
   }
 }
+

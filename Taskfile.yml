@@ -24,7 +24,16 @@ vars:
   CURRENT_BRANCH:
     sh: git rev-parse --abbrev-ref HEAD
   LOCAL_CHANGES:
-    sh: git diff --name-only HEAD | awk -F'/' '/^services\// {print $2}' | LC_ALL=C sort -u | tr '\n' ' '
+    sh: |
+      (git diff --name-only HEAD; git ls-files --others --exclude-standard) | \
+      awk -F'/' '/^services\// {print $2}' | \
+      LC_ALL=C sort -u | \
+      while read -r service; do \
+        if [ -d "services/$service" ]; then \
+          echo "$service"; \
+        fi; \
+      done | \
+      tr '\n' ' '
   UNPUSHED_COMMITS:
     sh: git diff --name-only origin/master...HEAD | awk -F'/' '/^services\// {print $2}' | sort -u | tr '\n' ' '
   IS_CI:
@@ -140,12 +149,12 @@ tasks:
         echo "Chnaged Services: {{.CHANGED_SERVICES}}"
         echo "Local Chanegs: {{.LOCAL_CHANGES}}"
         echo "Unpushued Changes: {{.UNPUSHED_COMMITS}}"
-        echo "Service env pairs: {{.SERVICE_ENV_PAIRS}}"
         echo "Parsed Pairs: {{.PARSED_PAIRS}}"
         
 
 # --- CI/CD TASKS (for changed services) ---
   plan-local:
+    deps: [clean]
     desc: "Creates a Terraform plan for services with uncommitted local changes."
     preconditions:
       - sh: '[ -n "{{.LOCAL_CHANGES}}" ]'

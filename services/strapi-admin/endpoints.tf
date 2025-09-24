@@ -2,8 +2,11 @@ resource "aws_vpc_endpoint" "s3" {
   vpc_id            = module.vpc.vpc_id
   service_name      = "com.amazonaws.${var.aws_region}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = [module.route_table.route_table_id]
-  tags              = { Name = "strapi-admin-s3-endpoint" }
+
+  # Associate this endpoint with the PRIVATE route table.
+  route_table_ids = [module.route_tables.private_route_table_id]
+
+  tags = { Name = "strapi-admin-s3-endpoint" }
 }
 
 # Endpoint for CloudWatch Logs (Interface Type) - For container logging.
@@ -12,9 +15,19 @@ resource "aws_vpc_endpoint" "logs" {
   service_name        = "com.amazonaws.${var.aws_region}.logs"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = module.public_subnet.subnet_ids # Using public subnets as defined in your networking.tf
+  subnet_ids          = module.private_subnets.subnet_ids # Place endpoints in private subnets
   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
   tags                = { Name = "strapi-admin-logs-endpoint" }
+}
+
+resource "aws_vpc_endpoint" "servicediscovery" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.servicediscovery"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = module.private_subnets.subnet_ids
+  security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+  tags                = { Name = "strapi-admin-servicediscovery-endpoint" }
 }
 
 # Endpoint for ECR API (Interface Type) - For Docker authentication.
@@ -23,7 +36,7 @@ resource "aws_vpc_endpoint" "ecr_api" {
   service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = module.public_subnet.subnet_ids
+  subnet_ids          = module.private_subnets.subnet_ids
   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
   tags                = { Name = "strapi-admin-ecr-api-endpoint" }
 }
@@ -34,7 +47,7 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = module.public_subnet.subnet_ids
+  subnet_ids          = module.private_subnets.subnet_ids
   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
   tags                = { Name = "strapi-admin-ecr-dkr-endpoint" }
 }
