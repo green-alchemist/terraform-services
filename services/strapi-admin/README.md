@@ -19,7 +19,7 @@
 | <a name="module_aurora_security_group"></a> [aurora\_security\_group](#module\_aurora\_security\_group) | git@github.com:green-alchemist/terraform-modules.git//modules/security-group | n/a |
 | <a name="module_dns_record"></a> [dns\_record](#module\_dns\_record) | git@github.com:green-alchemist/terraform-modules.git//modules/route53-record | n/a |
 | <a name="module_ecr_parameter"></a> [ecr\_parameter](#module\_ecr\_parameter) | git@github.com:green-alchemist/terraform-modules.git//modules/ssm-parameter | n/a |
-| <a name="module_ecs_task_execution_role"></a> [ecs\_task\_execution\_role](#module\_ecs\_task\_execution\_role) | git@github.com:green-alchemist/terraform-modules.git//modules/ecs-task-execution-role | n/a |
+| <a name="module_ecs_roles"></a> [ecs\_roles](#module\_ecs\_roles) | git@github.com:green-alchemist/terraform-modules.git//modules/ecs-task-execution-role | n/a |
 | <a name="module_env_parameter"></a> [env\_parameter](#module\_env\_parameter) | git@github.com:green-alchemist/terraform-modules.git//modules/ssm-parameter | n/a |
 | <a name="module_internet_gateway"></a> [internet\_gateway](#module\_internet\_gateway) | git@github.com:green-alchemist/terraform-modules.git//modules/internet-gateway | n/a |
 | <a name="module_private_subnets"></a> [private\_subnets](#module\_private\_subnets) | git@github.com:green-alchemist/terraform-modules.git//modules/subnets | n/a |
@@ -36,19 +36,26 @@
 
 | Name | Type |
 |------|------|
+| [aws_security_group_rule.allow_all_fargate_egress](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule) | resource |
 | [aws_security_group_rule.allow_apigw_to_fargate](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule) | resource |
-| [aws_security_group_rule.allow_fargate_egress](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule) | resource |
 | [aws_security_group_rule.allow_fargate_to_db](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule) | resource |
 | [aws_security_group_rule.allow_fargate_to_endpoints](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule) | resource |
+| [aws_vpc_endpoint.ec2messages](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
 | [aws_vpc_endpoint.ecr_api](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
 | [aws_vpc_endpoint.ecr_dkr](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
 | [aws_vpc_endpoint.logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
 | [aws_vpc_endpoint.s3](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
 | [aws_vpc_endpoint.servicediscovery](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
+| [aws_vpc_endpoint.ssm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
+| [aws_vpc_endpoint.ssmmessages](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
 | [aws_acm_certificate.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/acm_certificate) | data source |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_iam_policy_document.ecs_execution_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.strapi_task_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 | [aws_route53_zone.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) | data source |
 | [aws_ssm_parameter.database_password](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameter) | data source |
-| [aws_ssm_parameters_by_path.env_vars](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameters_by_path) | data source |
+| [aws_ssm_parameters_by_path.env_var_names](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameters_by_path) | data source |
 
 ## Inputs
 
