@@ -26,6 +26,7 @@ module "ecr_parameter" {
   }
 }
 
+
 module "env_parameter" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/ssm-parameter"
 
@@ -78,4 +79,3 @@ module "env_parameter" {
     ManagedBy   = "Terraform"
   }
 }
-

@@ -51,3 +51,36 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
   tags                = { Name = "strapi-admin-ecr-dkr-endpoint" }
 }
+
+# Required for the SSM agent to communicate
+resource "aws_vpc_endpoint" "ssmmessages" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = module.private_subnets.subnet_ids
+  security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+  tags                = { Name = "${var.environment}-ssmmessages-endpoint" }
+}
+
+# Required for the SSM agent to communicate
+resource "aws_vpc_endpoint" "ssm" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ssm"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = module.private_subnets.subnet_ids
+  security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+  tags                = { Name = "${var.environment}-ssm-endpoint" }
+}
+
+# Required by the SSM agent for session management
+resource "aws_vpc_endpoint" "ec2messages" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = module.private_subnets.subnet_ids
+  security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+  tags                = { Name = "${var.environment}-ec2messages-endpoint" }
+}

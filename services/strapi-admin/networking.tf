@@ -48,28 +48,39 @@ module "route_tables" {
 
 # --- Security Groups (Defined as empty containers first) ---
 
-module "vpc_link_security_group" {
-  source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
-  name   = "strapi-admin-vpc-link-sg"
-  vpc_id = module.vpc.vpc_id
-}
-
-module "vpc_endpoint_security_group" {
-  source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
-  name   = "strapi-admin-endpoint-sg"
-  vpc_id = module.vpc.vpc_id
-}
-
 module "strapi_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
-  name   = "strapi-admin-sg"
-  vpc_id = module.vpc.vpc_id
+
+  name        = "strapi-${var.environment}-fargate-sg"
+  description = "Security group for the Strapi Fargate service"
+  vpc_id      = module.vpc.vpc_id
 }
 
+# Security group for the Aurora database
 module "aurora_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
-  name   = "strapi-admin-db-sg"
-  vpc_id = module.vpc.vpc_id
+
+  name        = "strapi-${var.environment}-aurora-sg"
+  description = "Security group for the Strapi Aurora database"
+  vpc_id      = module.vpc.vpc_id
+}
+
+# Security group for the API Gateway VPC Link
+module "vpc_link_security_group" {
+  source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
+
+  name        = "strapi-${var.environment}-vpclink-sg"
+  description = "Security group for the API Gateway VPC Link"
+  vpc_id      = module.vpc.vpc_id
+}
+
+# Security group for the VPC Interface Endpoints
+module "vpc_endpoint_security_group" {
+  source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
+
+  name        = "strapi-${var.environment}-vpce-sg"
+  description = "Security group for VPC Interface Endpoints"
+  vpc_id      = module.vpc.vpc_id
 }
 
 resource "aws_security_group_rule" "allow_apigw_to_fargate" {
@@ -102,11 +113,19 @@ resource "aws_security_group_rule" "allow_fargate_to_endpoints" {
 }
 
 # Rule: Allow Fargate to talk outbound to the internet (for VPC Endpoints, etc.)
-resource "aws_security_group_rule" "allow_fargate_egress" {
+# resource "aws_security_group_rule" "allow_fargate_egress" {
+#   type              = "egress"
+#   from_port         = 0
+#   to_port           = 0
+#   protocol          = "-1"
+#   cidr_blocks       = ["0.0.0.0/0"]
+#   security_group_id = module.strapi_security_group.security_group_id
+# }
+resource "aws_security_group_rule" "allow_all_fargate_egress" {
   type              = "egress"
   from_port         = 0
   to_port           = 0
-  protocol          = "-1"
+  protocol          = "-1" # "-1" means all protocols
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = module.strapi_security_group.security_group_id
 }
@@ -116,7 +135,7 @@ resource "aws_security_group_rule" "allow_fargate_egress" {
 module "api_gateway" {
   source                = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
   name                  = "strapi-admin-${var.environment}"
-  subnet_ids            = module.public_subnets.subnet_ids
+  subnet_ids            = module.private_subnets.subnet_ids
   security_group_ids    = [module.vpc_link_security_group.security_group_id]
   fargate_service_arn   = module.strapi_fargate.service_arn
   domain_name           = "admin-${var.environment}.${var.root_domain_name}"
