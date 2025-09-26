@@ -113,19 +113,11 @@ resource "aws_security_group_rule" "allow_fargate_to_endpoints" {
 }
 
 # Rule: Allow Fargate to talk outbound to the internet (for VPC Endpoints, etc.)
-# resource "aws_security_group_rule" "allow_fargate_egress" {
-#   type              = "egress"
-#   from_port         = 0
-#   to_port           = 0
-#   protocol          = "-1"
-#   cidr_blocks       = ["0.0.0.0/0"]
-#   security_group_id = module.strapi_security_group.security_group_id
-# }
-resource "aws_security_group_rule" "allow_all_fargate_egress" {
+resource "aws_security_group_rule" "allow_fargate_egress" {
   type              = "egress"
   from_port         = 0
   to_port           = 0
-  protocol          = "-1" # "-1" means all protocols
+  protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = module.strapi_security_group.security_group_id
 }
