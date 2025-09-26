@@ -6,6 +6,6 @@ module "aurora_db" {
   subnet_ids               = module.private_subnets.subnet_ids
   security_group_ids       = [module.aurora_security_group.security_group_id]
   seconds_until_auto_pause = 600
-  max_capacity             = 0
-  min_capacity             = 1.0
+  min_capacity             = 0.0
+  max_capacity             = 1.0
 }
