@@ -47,7 +47,7 @@ module "strapi_fargate" {
 
   # --- Enable Scale-to-Zero ---
   enable_autoscaling            = true
-  min_tasks                     = 1
+  min_tasks                     = 0
   max_tasks                     = 1
   scale_down_evaluation_periods = 3
 
