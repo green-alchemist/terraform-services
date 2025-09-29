@@ -46,6 +46,12 @@ module "route_tables" {
   private_subnets_map        = module.private_subnets.subnet_objects
 }
 
+resource "aws_service_discovery_private_dns_namespace" "service_connect" {
+  name        = "strapi-internal"
+  description = "Private DNS namespace for Service Connect"
+  vpc         = module.vpc.vpc_id
+}
+
 # --- Security Groups (Defined as empty containers first) ---
 
 module "strapi_security_group" {
@@ -65,15 +71,6 @@ module "aurora_security_group" {
   vpc_id      = module.vpc.vpc_id
 }
 
-# Security group for the API Gateway VPC Link
-module "vpc_link_security_group" {
-  source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
-
-  name        = "strapi-${var.environment}-vpclink-sg"
-  description = "Security group for the API Gateway VPC Link"
-  vpc_id      = module.vpc.vpc_id
-}
-
 # Security group for the VPC Interface Endpoints
 module "vpc_endpoint_security_group" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/security-group"
@@ -83,16 +80,30 @@ module "vpc_endpoint_security_group" {
   vpc_id      = module.vpc.vpc_id
 }
 
-resource "aws_security_group_rule" "allow_apigw_to_fargate" {
+# --- Ingress Rules ---
+
+# Rule: Allow Lambda to talk to the Fargate service on the application port.
+resource "aws_security_group_rule" "allow_lambda_to_fargate" {
   type                     = "ingress"
   from_port                = 1337
   to_port                  = 1337
   protocol                 = "tcp"
-  source_security_group_id = module.vpc_link_security_group.security_group_id
+  source_security_group_id = module.strapi_lambda_proxy.lambda_security_group_id
   security_group_id        = module.strapi_security_group.security_group_id
 }
 
-# Rule: Allow Fargate to talk to the Database
+# Rule: Allow Lambda to talk to Fargate service.
+resource "aws_security_group_rule" "lambda_egress_to_fargate" {
+  type                     = "egress"
+  from_port                = 1337
+  to_port                  = 1337
+  protocol                 = "tcp"
+  source_security_group_id = module.strapi_security_group.security_group_id
+  security_group_id        = module.strapi_lambda_proxy.lambda_security_group_id
+  description              = "Allow Lambda to connect to the Strapi Fargate service"
+}
+
+# Rule: Allow Fargate to talk to the Database.
 resource "aws_security_group_rule" "allow_fargate_to_db" {
   type                     = "ingress"
   from_port                = 5432
@@ -102,7 +113,7 @@ resource "aws_security_group_rule" "allow_fargate_to_db" {
   security_group_id        = module.aurora_security_group.security_group_id
 }
 
-# Rule: Allow Fargate to talk to the VPC Endpoints
+# Rule: Allow Fargate to talk to the VPC Endpoints for AWS APIs.
 resource "aws_security_group_rule" "allow_fargate_to_endpoints" {
   type                     = "ingress"
   from_port                = 443
@@ -112,7 +123,32 @@ resource "aws_security_group_rule" "allow_fargate_to_endpoints" {
   security_group_id        = module.vpc_endpoint_security_group.security_group_id
 }
 
-# Rule: Allow Fargate to talk outbound to the internet (for VPC Endpoints, etc.)
+# Rule: Allow Lambda to talk to the VPC Endpoints for AWS APIs.
+resource "aws_security_group_rule" "allow_lambda_to_vpc_endpoints" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = module.strapi_lambda_proxy.lambda_security_group_id
+  security_group_id        = module.vpc_endpoint_security_group.security_group_id
+}
+
+# Rule: Allow Lambda to connect to VPC Endpoints.
+resource "aws_security_group_rule" "lambda_egress_to_endpoints" {
+  type                     = "egress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = module.vpc_endpoint_security_group.security_group_id
+  security_group_id        = module.strapi_lambda_proxy.lambda_security_group_id
+  description              = "Allow Lambda to connect to AWS services via VPC endpoints"
+}
+
+
+
+# --- Egress Rules ---
+
+# Rule: Allow Fargate to talk outbound to the internet (for VPC Endpoints, etc.).
 resource "aws_security_group_rule" "allow_fargate_egress" {
   type              = "egress"
   from_port         = 0
@@ -123,21 +159,61 @@ resource "aws_security_group_rule" "allow_fargate_egress" {
 }
 
 
+
+
 # This is the corrected module block
 module "api_gateway" {
-  source                = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
-  name                  = "strapi-admin-${var.environment}"
-  subnet_ids            = module.private_subnets.subnet_ids
-  security_group_ids    = [module.vpc_link_security_group.security_group_id]
-  fargate_service_arn   = module.strapi_fargate.service_arn
-  domain_name           = "admin-${var.environment}.${var.root_domain_name}"
-  acm_certificate_arn   = data.aws_acm_certificate.this.arn
-  target_uri            = module.strapi_fargate.service_discovery_arn
+  source = "git@github.com:green-alchemist/terraform-modules.git//modules/api-gateway"
+
+  name                = "strapi-admin-${var.environment}"
+  domain_name         = "admin-${var.environment}.${var.root_domain_name}"
+  acm_certificate_arn = data.aws_acm_certificate.this.arn
+  # Configure for Lambda integration
+  integration_type      = "AWS_PROXY"
+  integration_uri       = module.strapi_lambda_proxy.lambda_function_invoke_arn
   enable_access_logging = true
   route_keys = [
-    "ANY /",
-    "ANY /admin/{proxy+}",
-    "ANY /api/{proxy+}",
-    "ANY /graphql"
+    "ANY /{proxy+}",
   ]
+  depends_on = [module.strapi_lambda_proxy]
 }
+
+module "strapi_lambda_proxy" {
+  source     = "git@github.com:green-alchemist/terraform-modules.git//modules/lambda-proxy"
+  depends_on = [module.strapi_fargate] # Ensure Fargate service is ready
+
+  service_name = "strapi-admin-proxy"
+  vpc_id       = module.vpc.vpc_id
+  subnet_ids   = module.private_subnets.subnet_ids
+
+  target_service_name       = "strapi-admin-service"
+  service_connect_namespace = aws_service_discovery_private_dns_namespace.service_connect.name
+  target_port               = 1337
+
+  enable_service_discovery_permissions = true
+  xray_tracing_enabled                 = true
+  runtime                              = "nodejs20.x"
+  memory_size                          = 512
+  timeout                              = 60
+  log_retention_days                   = 30
+  log_level                            = "INFO"
+  enable_monitoring                    = true
+  error_threshold                      = 25
+  throttle_threshold                   = 10
+
+  tags = {
+    Environment = var.environment
+    Service     = "strapi-admin"
+    ManagedBy   = "terraform"
+  }
+}
+
+# The "glue" resource that connects the two modules, breaking the circular dependency.
+resource "aws_lambda_permission" "api_gateway_invoke" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = module.strapi_lambda_proxy.lambda_function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.api_gateway.execution_arn}/*/*"
+}
+

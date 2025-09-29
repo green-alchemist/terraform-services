@@ -46,13 +46,26 @@ data "aws_iam_policy_document" "ecs_execution_policy" {
   }
 }
 
+# It allows the Lambda to find the Fargate task's private IP. unused
+# data "aws_iam_policy_document" "lambda_proxy_policy" {
+#   statement {
+#     effect = "Allow"
+#     actions = [
+#       "ecs:ListTasks",
+#       "ecs:DescribeTasks",
+#       "ec2:DescribeNetworkInterfaces"
+#     ]
+#     resources = ["*"] # Can be scoped down for higher security
+#   }
+# }
+
 module "ecs_roles" {
   source = "git@github.com:green-alchemist/terraform-modules.git//modules/ecs-task-execution-role"
 
   # 1. Define the Execution Role
   execution_role_name = "strapi-admin-${var.environment}-execution-role"
   execution_role_policy_jsons = {
-    SSMSecretsAccess = data.aws_iam_policy_document.ecs_execution_policy.json
+    # SSMSecretsAccess = data.aws_iam_policy_document.ecs_execution_policy.json
   }
 
   attach_ssm_secrets_policy = true # Allow it to fetch secrets
