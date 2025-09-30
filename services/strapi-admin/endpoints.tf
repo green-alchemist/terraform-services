@@ -19,15 +19,15 @@ resource "aws_vpc_endpoint" "logs" {
 }
 
 # Service Discovery Interface Endpoint: For ECS Service Connect registration.
-resource "aws_vpc_endpoint" "servicediscovery" {
-  vpc_id              = module.vpc.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.servicediscovery"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-  subnet_ids          = module.private_subnets.subnet_ids
-  security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
-  tags                = { Name = "strapi-admin-servicediscovery-endpoint" }
-}
+# resource "aws_vpc_endpoint" "servicediscovery" {
+#   vpc_id              = module.vpc.vpc_id
+#   service_name        = "com.amazonaws.${var.aws_region}.servicediscovery"
+#   vpc_endpoint_type   = "Interface"
+#   private_dns_enabled = true
+#   subnet_ids          = module.private_subnets.subnet_ids
+#   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+#   tags                = { Name = "strapi-admin-servicediscovery-endpoint" }
+# }
 
 # ECR API Interface Endpoint: For authenticating with the container registry.
 resource "aws_vpc_endpoint" "ecr_api" {

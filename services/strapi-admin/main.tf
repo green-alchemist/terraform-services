@@ -41,13 +41,13 @@ module "strapi_fargate" {
   assign_public_ip            = false
   enable_execute_command      = true
   # --- Enable Service Connect Discovery ---
-  service_connect_enabled       = true
-  service_connect_namespace_arn = aws_service_discovery_private_dns_namespace.service_connect.arn
+  service_connect_enabled = true
+  # service_connect_namespace_arn = aws_service_discovery_private_dns_namespace.service_connect.arn
 
 
   # --- Enable Scale-to-Zero ---
   enable_autoscaling            = true
-  min_tasks                     = 1
+  min_tasks                     = 0
   max_tasks                     = 1
   scale_down_evaluation_periods = 3
 
