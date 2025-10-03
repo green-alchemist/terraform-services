@@ -5,7 +5,10 @@ module "aurora_db" {
   master_password          = data.aws_ssm_parameter.database_password.value
   subnet_ids               = module.private_subnets.subnet_ids
   security_group_ids       = [module.aurora_security_group.security_group_id]
-  seconds_until_auto_pause = 600
-  min_capacity             = 0.0
+  seconds_until_auto_pause = 300
+  min_capacity             = 0
   max_capacity             = 1.0
+
+  skip_final_snapshot          = false
+  restore_from_latest_snapshot = true
 }

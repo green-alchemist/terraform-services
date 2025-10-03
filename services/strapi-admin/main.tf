@@ -40,6 +40,9 @@ module "strapi_fargate" {
   vpc_id                      = module.vpc.vpc_id
   assign_public_ip            = false
   enable_execute_command      = true
+  # scale_in_cooldown             = 30
+  # scale_out_cooldown            = 30
+
   # --- Enable Service Connect Discovery ---
   service_connect_enabled = true
   # service_connect_namespace_arn = aws_service_discovery_private_dns_namespace.service_connect.arn
@@ -49,7 +52,11 @@ module "strapi_fargate" {
   enable_autoscaling            = true
   min_tasks                     = 0
   max_tasks                     = 1
-  scale_down_evaluation_periods = 3
+  scale_down_evaluation_periods = 2
+  scale_down_period_seconds     = 300
+  cpu_utilization_low_threshold = 05
+
+
 
   environment_variables = merge(
     local.ssm_env_vars,
@@ -67,9 +74,10 @@ module "strapi_fargate" {
   }
 
   # Use the health check settings we discovered were necessary
+  health_check_interval     = 30
   health_check_enabled      = true
   health_check_timeout      = 20
-  health_check_start_period = 100
+  health_check_start_period = 30
 }
 
 

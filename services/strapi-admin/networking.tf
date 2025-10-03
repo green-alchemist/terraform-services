@@ -55,16 +55,16 @@ module "strapi_security_group" {
   description = "Allows traffic from the VPC Link and allows all egress."
   vpc_id      = module.vpc.vpc_id
 
-  # This is a critical rule for VPC Link integrations. The VPC Link's network interfaces
-  # will be associated with this security group, and they need to be able to send traffic
-  # to the Fargate tasks, which are also in this security group.
-  ingress_rules = [{
-    from_port   = module.strapi_fargate.container_port
-    to_port     = module.strapi_fargate.container_port
-    protocol    = "tcp"
-    self        = true # Allows traffic from other resources in this same security group
-    description = "Allow traffic from the API Gateway VPC Link"
-  }]
+  # # This is a critical rule for VPC Link integrations. The VPC Link's network interfaces
+  # # will be associated with this security group, and they need to be able to send traffic
+  # # to the Fargate tasks, which are also in this security group.
+  # ingress_rules = [{
+  #   from_port   = module.strapi_fargate.container_port
+  #   to_port     = module.strapi_fargate.container_port
+  #   protocol    = "tcp"
+  #   self        = true # Allows traffic from other resources in this same security group
+  #   description = "Allow traffic from the API Gateway VPC Link"
+  # }]
 }
 
 module "aurora_security_group" {
@@ -131,18 +131,31 @@ module "api_gateway" {
   acm_certificate_arn = data.aws_acm_certificate.this.arn
 
   # 1. Set the integration type to trigger the VPC Link creation inside the module.
-  integration_type = "HTTP_PROXY"
+  integration_type = "AWS_PROXY"
 
   # 2. Use the ARN of the service for the integration URI. API Gateway uses this to find the service.
-  integration_uri = module.strapi_fargate.service_discovery_arn
-
+  # integration_uri = module.strapi_fargate.service_discovery_arn
+  integration_uri = module.strapi_fargate.service_discovery_arn # Not used in Lambda mode, but pass for modularity
   # 3. Pass the necessary subnet and security group IDs to the module.
   #    The module will use these to create its internal VPC Link.
-  subnet_ids                  = module.private_subnets.subnet_ids
+  subnet_ids = module.private_subnets.subnet_ids
+  # lambda_security_group_ids   = [module.]
   vpc_link_security_group_ids = [module.strapi_security_group.security_group_id]
+  enable_access_logging       = true
+  route_keys                  = ["ANY /{proxy+}"]
+  throttling_burst_limit      = 10000
+  throttling_rate_limit       = 5
+  integration_timeout_millis  = 30000
 
-  enable_access_logging = true
-  route_keys            = ["ANY /{proxy+}"]
+  # 4. Enable Lambda proxy for scale-to-zero
+  enable_lambda_proxy = true
+
+  # 5. Pass ECS/Cloud Map vars for nested Lambda
+  cluster_name              = module.strapi_fargate.cluster_name
+  service_name              = module.strapi_fargate.service_name
+  service_connect_namespace = module.strapi_fargate.service_discovery_namespace
+  cloud_map_service_id      = module.strapi_fargate.service_discovery_id
+  target_port               = module.strapi_fargate.container_port
 
   depends_on = [module.strapi_fargate]
 }

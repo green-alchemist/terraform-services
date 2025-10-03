@@ -19,15 +19,15 @@ resource "aws_vpc_endpoint" "logs" {
 }
 
 # Service Discovery Interface Endpoint: For ECS Service Connect registration.
-# resource "aws_vpc_endpoint" "servicediscovery" {
-#   vpc_id              = module.vpc.vpc_id
-#   service_name        = "com.amazonaws.${var.aws_region}.servicediscovery"
-#   vpc_endpoint_type   = "Interface"
-#   private_dns_enabled = true
-#   subnet_ids          = module.private_subnets.subnet_ids
-#   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
-#   tags                = { Name = "strapi-admin-servicediscovery-endpoint" }
-# }
+resource "aws_vpc_endpoint" "servicediscovery" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.servicediscovery"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = module.private_subnets.subnet_ids
+  security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+  tags                = { Name = "strapi-admin-servicediscovery-endpoint" }
+}
 
 # ECR API Interface Endpoint: For authenticating with the container registry.
 resource "aws_vpc_endpoint" "ecr_api" {
@@ -62,7 +62,7 @@ resource "aws_vpc_endpoint" "sts" {
   tags                = { Name = "${var.environment}-sts-endpoint" }
 }
 
-# SSM Interface Endpoint: For fetching secrets from SSM Parameter Store.
+# # SSM Interface Endpoint: For fetching secrets from SSM Parameter Store.
 resource "aws_vpc_endpoint" "ssm" {
   vpc_id              = module.vpc.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.ssm"
@@ -73,25 +73,51 @@ resource "aws_vpc_endpoint" "ssm" {
   tags                = { Name = "${var.environment}-ssm-endpoint" }
 }
 
-# SSMMessages Interface Endpoint: Required for ECS Exec and the SSM agent.
-resource "aws_vpc_endpoint" "ssmmessages" {
+# # SSMMessages Interface Endpoint: Required for ECS Exec and the SSM agent.
+# resource "aws_vpc_endpoint" "ssmmessages" {
+#   vpc_id              = module.vpc.vpc_id
+#   service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
+#   vpc_endpoint_type   = "Interface"
+#   private_dns_enabled = true
+#   subnet_ids          = module.private_subnets.subnet_ids
+#   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+#   tags                = { Name = "${var.environment}-ssmmessages-endpoint" }
+# }
+
+# # EC2Messages Interface Endpoint: Required by the SSM agent for session management (used by ECS Exec).
+# resource "aws_vpc_endpoint" "ec2messages" {
+#   vpc_id              = module.vpc.vpc_id
+#   service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
+#   vpc_endpoint_type   = "Interface"
+#   private_dns_enabled = true
+#   subnet_ids          = module.private_subnets.subnet_ids
+#   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+#   tags                = { Name = "${var.environment}-ec2messages-endpoint" }
+# }
+
+resource "aws_vpc_endpoint" "ecs" {
   vpc_id              = module.vpc.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
+  service_name        = "com.amazonaws.${var.aws_region}.ecs"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
   subnet_ids          = module.private_subnets.subnet_ids
   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
-  tags                = { Name = "${var.environment}-ssmmessages-endpoint" }
 }
 
-# EC2Messages Interface Endpoint: Required by the SSM agent for session management (used by ECS Exec).
-resource "aws_vpc_endpoint" "ec2messages" {
-  vpc_id              = module.vpc.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-  subnet_ids          = module.private_subnets.subnet_ids
-  security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
-  tags                = { Name = "${var.environment}-ec2messages-endpoint" }
-}
+# resource "aws_vpc_endpoint" "ecs_agent" {
+#   vpc_id              = module.vpc.vpc_id
+#   service_name        = "com.amazonaws.${var.aws_region}.ecs-agent"
+#   vpc_endpoint_type   = "Interface"
+#   private_dns_enabled = true
+#   subnet_ids          = module.private_subnets.subnet_ids
+#   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+# }
 
+# resource "aws_vpc_endpoint" "ecs_telemetry" {
+#   vpc_id              = module.vpc.vpc_id
+#   service_name        = "com.amazonaws.${var.aws_region}.ecs-telemetry"
+#   vpc_endpoint_type   = "Interface"
+#   private_dns_enabled = true
+#   subnet_ids          = module.private_subnets.subnet_ids
+#   security_group_ids  = [module.vpc_endpoint_security_group.security_group_id]
+# }
